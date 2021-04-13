@@ -3,9 +3,9 @@ from typing import List, Tuple
 
 import networkx as nx
 import matplotlib
-from matplotlib.axes import Axes
 
 matplotlib.use("TkAgg")
+from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
@@ -13,10 +13,16 @@ import tkinter as tk
 from tkinter import ttk
 
 partisanship_range = [0, 1]
+DEFAULT_NODES_TO_RENDER = 50
 
 
 def generate_dummy_graph(num_nodes: int) -> nx.Graph:
+    """
+    Creates a weighted graph, in order to test GUI
+
+    """
     g = nx.Graph()
+    threshold_for_edge = 0.5
 
     for i in range(num_nodes):
         partisanship = random.uniform(partisanship_range[0], partisanship_range[1])
@@ -25,20 +31,34 @@ def generate_dummy_graph(num_nodes: int) -> nx.Graph:
         g.add_node(node_name, partisanship=partisanship)
     for i in range(num_nodes):
         node_name = f'Node {i}'
-        if random.random() > 0.5:
+        if random.random() > threshold_for_edge:
             connected_node_name = f'Node {random.randrange(0, num_nodes)}'
             g.add_edge(node_name, connected_node_name)
 
     return g
 
 
-def render_neighbours(graph: nx.Graph, graph_plot: Axes, selected_node_name: str) -> None:
+def draw_node_and_neighbours(graph: nx.Graph, graph_plot: Axes,
+                             selected_node_name: str,
+                             num_nodes_to_render=DEFAULT_NODES_TO_RENDER) -> None:
+    """ Draw node selected_node_name and it's neighbours on graph_plot. Note that this doesn't
+    mean the nodes are visible, as the graph_plot must be rendered outside this function.
+
+    """
     nodes = [selected_node_name]
     edges = []
+    neighbours_rendered = 0
+    print(
+        f'{selected_node_name} has a partisanship score of {g.nodes[selected_node_name]["partisanship"]}')
     for neighbour in graph.neighbors(selected_node_name):
+        if (num_nodes_to_render <= neighbours_rendered):
+            print('breaking')
+            break
         print(f'{selected_node_name} is neighbour to {neighbour}')
+        print(f'{neighbour} has a partisanship score of: {g.nodes[neighbour]["partisanship"]}')
         nodes.append(neighbour)
         edges.append((selected_node_name, neighbour))
+        neighbours_rendered += 1
 
     blue_to_red = colors.LinearSegmentedColormap.from_list("BlueToRed", ["b", "r"])
     node_colours = [graph.nodes[node_name]['partisanship'] for node_name in nodes]
@@ -47,14 +67,13 @@ def render_neighbours(graph: nx.Graph, graph_plot: Axes, selected_node_name: str
             with_labels=True, ax=graph_plot)
 
 
-def render_graph(graph: nx.Graph, num_nodes: int) -> Tuple[List[str], List[Tuple[str, str]]]:
-    '''
-     Note: The first element of the tuple contains the nodes, and the second element of the tuple
-    is the list of edges
+def draw_limited_num_of_nodes(graph: nx.Graph, graph_plot: Axes, num_nodes: int):
+    """ Draw num_nodes nodes, choosing nodes randomly, but prioritizing connected nodes when
+    possible on graph_plot. Note that this doesn't mean the nodes are visible, as the graph_plot
+    must be rendered outside this function.
 
-    '''
-    # choose a random vertex
-    # maybe just use this: https://networkx.org/documentation/stable//reference/classes/generated/networkx.Graph.subgraph.html#networkx.Graph.subgraph
+    """
+
     nodes = []
     edges = []
     unvisited_nodes = set(graph.nodes)
@@ -69,25 +88,25 @@ def render_graph(graph: nx.Graph, num_nodes: int) -> Tuple[List[str], List[Tuple
         for node in nodes_clump:
             unvisited_nodes.remove(node)
 
-    return nodes, edges
-    # NOTE: unfinished, and doesn't work
+    node_colours = [g.nodes[node_name]['partisanship'] for node_name in nodes]
+
+    # Color map stuff: https://stackoverflow.com/questions/25748182/python-making-color-bar-that-runs-from-red-to-blue
+    blue_to_red = colors.LinearSegmentedColormap.from_list("BlueToRed", ["b", "r"])
+    labels = {}
+    for node in nodes:
+        labels[node] = node
+    nx.draw_networkx_nodes(g, spring_pos, nodelist=nodes, node_color=node_colours,
+                           cmap=blue_to_red, ax=a)
+    nx.draw_networkx_labels(g, spring_pos, labels=labels, ax=a)
+    nx.draw_networkx_edges(g, pos=spring_pos, edgelist=edges, ax=a)
 
 
 def _get_nodes_and_edges(graph: nx.Graph, current_node_name: str, num_nodes: int,
                          visited: set[str]) -> \
         Tuple[List[str], List[Tuple[str, str]]]:
-    """ return tuple of list of num_nodes nodes, and a list of the edges between them.
-
-    Decides which nodes to include by choosing random vertices, and including all connected vertices
-    till num_nodes hit
-
+    """ returns tuple of list of num_nodes nodes, and a list of the edges between them.
     Note: The first element of the tuple contains the nodes, and the second element of the tuple
     is the list of edges
-
-
-    Preconditions:
-        - graph nodes have unique names
-
     """
     if num_nodes == 0:
         print(f'number of nodes left{num_nodes}')
@@ -110,6 +129,25 @@ def _get_nodes_and_edges(graph: nx.Graph, current_node_name: str, num_nodes: int
     # also make list "edgelist" that we pass to draw method
 
 
+def partisanship_score_to_str(partisanship_score: int) -> str:
+    ''' Return a partisanship rating from the following list:
+    ["Far-Left", "Center-Left", "Moderate", "Center-Right", "Far-Right"] based on the
+    partisanship score
+
+    '''
+    if partisanship_range[0] <= partisanship_score < 0.2:
+        return "Far-Left"
+    elif 0.2 <= partisanship_score < 0.4:
+        return "Center-Left"
+    elif 0.4 <= partisanship_score < 0.6:
+        return "Moderate"
+    elif 0.6 <= partisanship_score < 0.8:
+        return "Center-Right"
+    else:
+        # partisanship score is in [0.8, 1]
+        return "Far-Right"
+
+
 def render_tkinter_gui(graph: nx.Graph, graph_figure: plt.Figure, nodes_list: List[str]):
     """ Renders the graph
 
@@ -129,31 +167,55 @@ def render_tkinter_gui(graph: nx.Graph, graph_figure: plt.Figure, nodes_list: Li
 
     frame_user_interaction = tk.Frame(master=window, width=200, height=100)
     frame_user_interaction.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
+
     selected_node_name = tk.StringVar()
-    # could maybe add autocomplete feature?
+    num_nodes_as_str = tk.StringVar(value=str(DEFAULT_NODES_TO_RENDER))
+
     node_selector = ttk.Combobox(master=frame_user_interaction,
                                  textvariable=selected_node_name)
     partisanship_label = ttk.Label(master=frame_user_interaction)
-    partisanship_label.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
+
+    # add label for Number of nodes to show
+    num_nodes_label = ttk.Label(master=frame_user_interaction, text='Number of nodes to display:')
+    # add entry for number of nodes to show
+    num_nodes_entry = tk.Entry(master=frame_user_interaction, textvariable=num_nodes_as_str)
+    node_selector_label = ttk.Label(master=frame_user_interaction, text='Show neighbours for: ')
+
+    # change logic in on_combobox_selected so it only shows number of nodes neighbours max
+    def on_random_nodes_btn_pressed():
+        graph_plot = graph_figure.get_axes()[0]
+        graph_plot.clear()
+        num_nodes = int(num_nodes_as_str.get())
+        draw_limited_num_of_nodes(graph, graph_plot, num_nodes)
+        canvas.draw()
 
     def on_combobox_selected(event):
-        # I hate this method and all it represents
-        # I think if I make all the tkinter stuff an object this becomes less bad?
-        print("combobox selected")
-        print(f'The selected combobox is: {selected_node_name.get()}')
-        selected_node_partisanship = graph.nodes[selected_node_name.get()]['partisanship']
-        partisanship_label['text'] = f'Partisanship score is: \n {selected_node_partisanship}'
+        selected_node_partisanship = partisanship_score_to_str(
+            graph.nodes[selected_node_name.get()]['partisanship'])
+        partisanship_label[
+            'text'] = f'{selected_node_name.get()} is a {selected_node_partisanship} tweet'
 
         graph_plot = graph_figure.get_axes()[0]
         graph_plot.clear()
-        render_neighbours(graph, graph_plot, selected_node_name.get())
+        num_nodes = int(num_nodes_as_str.get())
+        draw_node_and_neighbours(graph, graph_plot, selected_node_name.get(), num_nodes)
         canvas.draw()
+
+    # add button for show random nodes
+    show_random_nodes_btn = tk.Button(master=frame_user_interaction, text="View random nodes",
+                                      command=on_random_nodes_btn_pressed)
 
     node_selector['values'] = nodes_list
     node_selector.state(['readonly'])
     node_selector.bind("<<ComboboxSelected>>", on_combobox_selected)
-    node_selector.pack()
-    # NOTE: when value changes, call selection_clear method
+
+    node_selector.grid(row=0, column=1)
+    node_selector_label.grid(row=0, column=0)
+    # put an entry to the left of node_selector to explain what it does
+    num_nodes_label.grid(row=1, column=0)
+    num_nodes_entry.grid(row=1, column=1)
+    show_random_nodes_btn.grid(row=2, column=0)
+    partisanship_label.grid(row=2, column=1)
 
     window.mainloop()
 
@@ -162,30 +224,23 @@ if __name__ == '__main__':
     # https://stackoverflow.com/questions/20133479/how-to-draw-directed-graphs-using-networkx-in-python
     g = generate_dummy_graph(50)
     num_nodes = 7
-    n_nodes, n_edges = render_graph(g, num_nodes)
-    print(f'correct number of nodes: {len(n_nodes) == num_nodes}')
-    print(n_nodes)
-    node_colours = [g.nodes[node_name]['partisanship'] for node_name in n_nodes]
-
-    # Color map stuff: https://stackoverflow.com/questions/25748183/python-making-color-bar-that-runs-from-red-to-blue
-    blue_to_red = colors.LinearSegmentedColormap.from_list("BlueToRed", ["b", "r"])
     graph_figure = plt.Figure()
     a = graph_figure.add_subplot(111)
     spring_pos = nx.spring_layout(g)
-    # Try just drawing nodes -> draw edges -> draw layers
-    labels = {}
-    for node in n_nodes:
-        labels[node] = node
-    nx.draw(g, pos=spring_pos, cmap=blue_to_red, node_color=node_colours, with_labels=True, ax=a,
-            nodelist=n_nodes, labels=labels, edgelist=n_edges)
+    node_colours = [g.nodes[node_name]['partisanship'] for node_name in g.nodes()]
+
+    # Color map stuff: https://stackoverflow.com/questions/25748183/python-making-color-bar-that-runs-from-red-to-blue
+    blue_to_red = colors.LinearSegmentedColormap.from_list("BlueToRed", ["b", "r"])
+    nx.draw(g, cmap=blue_to_red, node_color=node_colours, with_labels=True, ax=a)
 
     render_tkinter_gui(g, graph_figure, list(g.nodes))
 
     # TODO:
-    # figure out how to intelligently limit number of vertices (Basically done)
-    #
     # https://stackoverflow.com/questions/55553845/display-networkx-graph-inside-the-tkinter-window
     # make it so it doesn't recalculate color when u open a new graph lol
+    # Make it so it shows properties when you hover over a node
+    #   - https://stackoverflow.com/questions/7908636/possible-to-make-labels-appear-when-hovering-over-a-point-in-matplotlib
+    #   - ideally, it would just show up in the side bar
 
     # NOTE: Jeremy, this is your stuff
     # Why does the application glitch when the mouse is in the boundaries?
