@@ -2,6 +2,7 @@
 from __future__ import annotations
 from typing import Any, Union
 
+import networkx as nx
 
 DEMOCRATIC = 0
 REPUBLICAN = 1
@@ -198,3 +199,20 @@ class WeightedGraph:
     def get_vertices(self) -> dict:
         """Returns the _vertices"""
         return self._vertices
+
+    def to_networkx(self, max_vertices: int = 5000) -> nx.Graph:
+        """Graph to convert to networkx"""
+        graph_nx = nx.Graph()
+        for v in self._vertices.values():
+            graph_nx.add_node(v.item, bias=v.partisanship)
+
+            for u in v.neighbours:
+                if graph_nx.number_of_nodes() < max_vertices:
+                    graph_nx.add_node(u.item, bias=v.partisanship)
+
+                if u.item in graph_nx.nodes:
+                    graph_nx.add_edge(v.item, u.item)
+
+            if graph_nx.number_of_nodes() >= max_vertices:
+                break
+        return graph_nx
