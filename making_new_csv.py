@@ -1,5 +1,18 @@
 """
-A file to filter out all the American politician hashtags into a csv file
+CSC111 2021 Project 1, Part 1 Making New CSV
+
+This is a file to filter out all the American politician hashtags into a csv file
+from hydrated tweet files
+
+Copyright and Usage Information
+===============================
+This file is provided solely for the personal and private use of the professors and TAs
+in CSC111 at the University of Toronto St. George campus. All forms of
+distribution of this code, whether as given or with any changes, are
+expressly prohibited. For more information on copyright for this CSC111 project,
+please consult with us.
+
+This file is Copyright (c) 2021 Jiajin Wu, Tai Zhang, and Kenneth Miura.
 """
 import json
 import csv
@@ -59,4 +72,17 @@ def get_us_information(file: str) -> dict[str, int]:
 
 if __name__ == '__main__':
     # this out put a csv file from the two given file
+    # (warning the following line may take a while to run, the full file has over 10 million tweets)
     get_us_hashtags('all_tweet_ids.jsonl', 'full_member_info.csv')
+
+    import python_ta.contracts
+    python_ta.contracts.check_all_contracts()
+
+    import python_ta
+    python_ta.check_all(config={
+        'max-line-length': 100,
+        'disable': ['E1136'],
+        'extra-imports': ['csv', 'json'],
+        'allowed-io': ['get_us_information', 'get_us_hashtags'],
+        'max-nested-blocks': 4
+    })
