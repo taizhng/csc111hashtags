@@ -1,18 +1,31 @@
+"""CSC111 Winter 2021 Final assignment Rendering
+
+Description
+===============================
+This python module provides an implementation for viewing the graph of hashtags, as well as an
+interface for interacting with it.
+Copyright and Usage Information
+===============================
+This file is provided solely for the final assignment of CSC110 at the University of Toronto
+St. George campus. All forms of distribution of this code, whether as given or with any changes,
+are expressly prohibited.
+This file is Copyright (c) 2021 Kenneth Miura
+"""
 import random
 from typing import List, Tuple
+import tkinter as tk
+from tkinter import ttk
 
 import networkx as nx
 import matplotlib
 
-matplotlib.use("TkAgg")
 from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
-import matplotlib.colors as colors
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
-import tkinter as tk
-from tkinter import ttk
 
-partisanship_range = [0, 1]
+matplotlib.use("TkAgg")
+
+PARTISANSHIP_RANGE = [0, 1]
 DEFAULT_NODES_TO_RENDER = 50
 
 
@@ -21,21 +34,21 @@ def generate_dummy_graph(num_nodes: int) -> nx.Graph:
     Creates a weighted graph, in order to test GUI
 
     """
-    g = nx.Graph()
+    graph = nx.Graph()
     threshold_for_edge = 0.5
 
     for i in range(num_nodes):
-        partisanship = random.uniform(partisanship_range[0], partisanship_range[1])
+        partisanship = random.uniform(PARTISANSHIP_RANGE[0], PARTISANSHIP_RANGE[1])
 
         node_name = f'Node {i}'
-        g.add_node(node_name, partisanship=partisanship)
+        graph.add_node(node_name, partisanship=partisanship)
     for i in range(num_nodes):
         node_name = f'Node {i}'
         if random.random() > threshold_for_edge:
             connected_node_name = f'Node {random.randrange(0, num_nodes)}'
-            g.add_edge(node_name, connected_node_name)
+            graph.add_edge(node_name, connected_node_name)
 
-    return g
+    return graph
 
 
 def draw_node_and_neighbours(graph: nx.Graph, graph_plot: Axes,
@@ -51,23 +64,23 @@ def draw_node_and_neighbours(graph: nx.Graph, graph_plot: Axes,
     print(
         f'{selected_node_name} has a partisanship score of {g.nodes[selected_node_name]["partisanship"]}')
     for neighbour in graph.neighbors(selected_node_name):
-        if (num_nodes_to_render <= neighbours_rendered):
+        if num_nodes_to_render <= neighbours_rendered:
             print('breaking')
             break
-        print(f'{selected_node_name} is neighbour to {neighbour}')
-        print(f'{neighbour} has a partisanship score of: {g.nodes[neighbour]["partisanship"]}')
+        print(
+            f'Neighbour:{neighbour} has a partisanship score of: {g.nodes[neighbour]["partisanship"]}')
         nodes.append(neighbour)
         edges.append((selected_node_name, neighbour))
         neighbours_rendered += 1
 
-    blue_to_red = colors.LinearSegmentedColormap.from_list("BlueToRed", ["b", "r"])
-    node_colours = [graph.nodes[node_name]['partisanship'] for node_name in nodes]
+    node_colours = [get_colour(graph.nodes[node_name]['partisanship']) for node_name in nodes]
     # TODO: iron out bug where the colour of node changes for this vs what it originally was
-    nx.draw(g, cmap=blue_to_red, node_color=node_colours, nodelist=nodes, edgelist=edges,
+    nx.draw(g, node_color=node_colours, nodelist=nodes, edgelist=edges,
             with_labels=True, ax=graph_plot)
 
 
-def draw_limited_num_of_nodes(graph: nx.Graph, graph_plot: Axes, num_nodes: int):
+def draw_limited_num_of_nodes(graph: nx.Graph, graph_plot: Axes,
+                              num_nodes=DEFAULT_NODES_TO_RENDER) -> None:
     """ Draw num_nodes nodes, choosing nodes randomly, but prioritizing connected nodes when
     possible on graph_plot. Note that this doesn't mean the nodes are visible, as the graph_plot
     must be rendered outside this function.
@@ -76,9 +89,12 @@ def draw_limited_num_of_nodes(graph: nx.Graph, graph_plot: Axes, num_nodes: int)
 
     nodes = []
     edges = []
+    original_num_nodes = num_nodes  # TODO: delete this & other debugging stuff
     unvisited_nodes = set(graph.nodes)
     while num_nodes > 0:
         start_node = random.choice(tuple(unvisited_nodes))
+        print(f'selecting {start_node} as start node')
+        print(f'current num_nodes is {num_nodes}')
         # either continue randomly selecting choices till it hasn't been visited, or remove nodes that are in the list
         # I'm pretty sure doing removal in the set and then choosing from the set as a tuple is faster? in terms of Big O
         nodes_clump, edges_clump = _get_nodes_and_edges(graph, start_node, num_nodes, set())
@@ -87,18 +103,24 @@ def draw_limited_num_of_nodes(graph: nx.Graph, graph_plot: Axes, num_nodes: int)
         edges.extend(edges_clump)
         for node in nodes_clump:
             unvisited_nodes.remove(node)
+    if len(nodes) == original_num_nodes:
+        print('Correct # of nodes')
+    else:
+        print('incorrect # of nodes')
 
-    node_colours = [g.nodes[node_name]['partisanship'] for node_name in nodes]
+    node_colours = [get_colour(g.nodes[node_name]['partisanship']) for node_name in nodes]
 
     # Color map stuff: https://stackoverflow.com/questions/25748182/python-making-color-bar-that-runs-from-red-to-blue
-    blue_to_red = colors.LinearSegmentedColormap.from_list("BlueToRed", ["b", "r"])
     labels = {}
     for node in nodes:
         labels[node] = node
+    # https://networkx.org/documentation/latest/reference/generated/networkx.drawing.layout.spring_layout.html
+    spring_pos = nx.spring_layout(g)
     nx.draw_networkx_nodes(g, spring_pos, nodelist=nodes, node_color=node_colours,
-                           cmap=blue_to_red, ax=a)
-    nx.draw_networkx_labels(g, spring_pos, labels=labels, ax=a)
-    nx.draw_networkx_edges(g, pos=spring_pos, edgelist=edges, ax=a)
+                           ax=graph_plot, vmin=PARTISANSHIP_RANGE[0],
+                           vmax=PARTISANSHIP_RANGE[1])
+    nx.draw_networkx_labels(g, spring_pos, labels=labels, ax=graph_plot)
+    nx.draw_networkx_edges(g, pos=spring_pos, edgelist=edges, ax=graph_plot)
 
 
 def _get_nodes_and_edges(graph: nx.Graph, current_node_name: str, num_nodes: int,
@@ -117,9 +139,11 @@ def _get_nodes_and_edges(graph: nx.Graph, current_node_name: str, num_nodes: int
         visited.add(current_node_name)
         for neighbour in graph.neighbors(current_node_name):
             if neighbour not in visited:
-                edges.append((current_node_name, neighbour))
                 neighbour_nodes, neighbours_edges = _get_nodes_and_edges(graph, neighbour,
                                                                          num_nodes - 1, visited)
+                if len(neighbour_nodes) > 0:
+                    edges.append((current_node_name, neighbour))
+                num_nodes -= len(neighbour_nodes)
                 nodes.extend(neighbour_nodes)
                 edges.extend(neighbours_edges)
         return (nodes, edges)
@@ -135,7 +159,7 @@ def partisanship_score_to_str(partisanship_score: int) -> str:
     partisanship score
 
     '''
-    if partisanship_range[0] <= partisanship_score < 0.2:
+    if PARTISANSHIP_RANGE[0] <= partisanship_score < 0.2:
         return "Far-Left"
     elif 0.2 <= partisanship_score < 0.4:
         return "Center-Left"
@@ -148,8 +172,25 @@ def partisanship_score_to_str(partisanship_score: int) -> str:
         return "Far-Right"
 
 
-def render_tkinter_gui(graph: nx.Graph, graph_figure: plt.Figure, nodes_list: List[str]):
-    """ Renders the graph
+def get_colour(partisanship_score: int) -> str:
+    ''' Returns a string representing a colour based on the partisanship score
+
+    '''
+    if PARTISANSHIP_RANGE[0] <= partisanship_score < 0.2:
+        return 'blue'
+    elif 0.2 <= partisanship_score < 0.4:
+        return '#0AD6F1'
+    elif 0.4 <= partisanship_score < 0.6:
+        return '#8A0676'
+    elif 0.6 <= partisanship_score < 0.8:
+        return '#FF9112'
+    else:
+        # partisanship score is in [0.8, 1]
+        return 'red'
+
+
+def render_tkinter_gui(graph: nx.Graph, graph_figure: plt.Figure) -> None:
+    """ Renders the graph stored in the graph variable, along with UI elements.
 
     """
     window = tk.Tk()
@@ -182,14 +223,15 @@ def render_tkinter_gui(graph: nx.Graph, graph_figure: plt.Figure, nodes_list: Li
     node_selector_label = ttk.Label(master=frame_user_interaction, text='Show neighbours for: ')
 
     # change logic in on_combobox_selected so it only shows number of nodes neighbours max
-    def on_random_nodes_btn_pressed():
+    def on_random_nodes_btn_pressed() -> None:
         graph_plot = graph_figure.get_axes()[0]
         graph_plot.clear()
         num_nodes = int(num_nodes_as_str.get())
         draw_limited_num_of_nodes(graph, graph_plot, num_nodes)
         canvas.draw()
 
-    def on_combobox_selected(event):
+    def on_combobox_selected(event: tk.Event) -> None:
+        print(type(event))
         selected_node_partisanship = partisanship_score_to_str(
             graph.nodes[selected_node_name.get()]['partisanship'])
         partisanship_label[
@@ -205,7 +247,7 @@ def render_tkinter_gui(graph: nx.Graph, graph_figure: plt.Figure, nodes_list: Li
     show_random_nodes_btn = tk.Button(master=frame_user_interaction, text="View random nodes",
                                       command=on_random_nodes_btn_pressed)
 
-    node_selector['values'] = nodes_list
+    node_selector['values'] = list(graph.nodes)
     node_selector.state(['readonly'])
     node_selector.bind("<<ComboboxSelected>>", on_combobox_selected)
 
@@ -223,17 +265,28 @@ def render_tkinter_gui(graph: nx.Graph, graph_figure: plt.Figure, nodes_list: Li
 if __name__ == '__main__':
     # https://stackoverflow.com/questions/20133479/how-to-draw-directed-graphs-using-networkx-in-python
     g = generate_dummy_graph(50)
-    num_nodes = 7
-    graph_figure = plt.Figure()
-    a = graph_figure.add_subplot(111)
-    spring_pos = nx.spring_layout(g)
-    node_colours = [g.nodes[node_name]['partisanship'] for node_name in g.nodes()]
+    figure = plt.Figure()
+    draw_limited_num_of_nodes(g, figure.add_subplot(111))
+    render_tkinter_gui(g, figure)
 
-    # Color map stuff: https://stackoverflow.com/questions/25748183/python-making-color-bar-that-runs-from-red-to-blue
-    blue_to_red = colors.LinearSegmentedColormap.from_list("BlueToRed", ["b", "r"])
-    nx.draw(g, cmap=blue_to_red, node_color=node_colours, with_labels=True, ax=a)
+    import python_ta
 
-    render_tkinter_gui(g, graph_figure, list(g.nodes))
+    # python_ta.check_all(config={
+    #     'max-line-length': 100,
+    #     'extra-imports': ['python_ta.contracts', 'networkx', 'matplotlib', 'matplotlib.axes',
+    #                       'matplotlib.pyplot', 'matplotlib.colors',
+    #                       'matplotlib.backends.backend_tkagg', 'tkinter', 'random'],
+    #     'disable': ['R1705', 'C0200'],
+    # })
+
+    import python_ta.contracts
+
+    python_ta.contracts.DEBUG_CONTRACTS = False
+    python_ta.contracts.check_all_contracts()
+
+    import doctest
+
+    doctest.testmod()
 
     # TODO:
     # https://stackoverflow.com/questions/55553845/display-networkx-graph-inside-the-tkinter-window
