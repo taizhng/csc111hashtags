@@ -32,6 +32,8 @@ def get_us_hashtags(tweets_file: str, member_info_file: str, senate_file: str) -
     us_politicians = get_us_information(member_info_file, senate_file)
     # create up a csv file called total_filtered_politician.csv
     # (there is no need to create this file before hand)
+    # uncomment the following line for testing if you want.
+    # with open('test_filtered_politician.csv', mode='w', encoding='utf-8') as csv_file:
     with open('total_filtered_politician.csv', mode='w', encoding='utf-8') as csv_file:
         # the header for the csv files
         fieldnames = ['name', 'partisan_score', 'hashtags']
@@ -110,6 +112,14 @@ if __name__ == '__main__':
         'max-nested-blocks': 4
     })
 
-    # this out put a csv file from the two given file
-    # (warning the following line may take a while to run, the full file has over 10 million tweets)
-    get_us_hashtags('all_tweet_ids.jsonl', 'full_member_info.csv', 'accounts-twitter-data.csv')
+    # this output a csv file from the three given file
+
+    # testing version (It takes 2-3 minutes for me, I used an old laptop which makes it slow)
+    # Just so you know, please run this after testing our full program, as it will overwrite the
+    # total_filtered_politician.csv that we gave in the zip file.
+    # OR You can uncomment line 36 and comment line 37.
+    get_us_hashtags('small_tweet_ids.jsonl', 'full_member_info.csv', 'accounts-twitter-data.csv')
+
+    # (warning the following line may take a while to run,
+    # the full version has over 10 million tweets)
+    # get_us_hashtags('all_tweet_ids.jsonl', 'full_member_info.csv', 'accounts-twitter-data.csv')
