@@ -17,17 +17,15 @@ import tkinter as tk
 from tkinter import ttk
 
 import networkx as nx
-import matplotlib
 
-from matplotlib.axes import Axes
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from plotly.graph_objs import Scatter, Figure
-
-matplotlib.use("TkAgg")
 
 PARTISANSHIP_RANGE = [0, 1]
 DEFAULT_NODES_TO_RENDER = 20
+MIN_NODE_SIZE = 5
+MIN_LINE_WIDTH = 3
+MAX_NODE_SIZE = 300
+MAX_LINE_WIDTH = 20
 
 
 def generate_dummy_graph(num_nodes: int) -> nx.Graph:
@@ -52,73 +50,49 @@ def generate_dummy_graph(num_nodes: int) -> nx.Graph:
     return graph
 
 
-def draw_all_nodes_no_labels(graph: nx.Graph, graph_plot: Axes):
-    ''' Draw all nodes and edges in the graph, but no labels
-
-    '''
-    nodes = list(graph.nodes)
-    edge_width = 0.1
-    edge_transparency = 0
-    node_size = 50
-
-    node_colours = [get_colour(graph.nodes[node_name]['bias']) for node_name in nodes]
-    spring_pos = nx.spring_layout(nodes)
-    if graph_plot is None:
-        nx.draw_networkx_nodes(graph, spring_pos, node_color=node_colours, node_size=node_size,
-                               )
-        nx.draw_networkx_edges(graph, pos=spring_pos, width=edge_width)
-
-    nx.draw_networkx_nodes(graph, spring_pos, node_color=node_colours, node_size=node_size,
-                           ax=graph_plot)
-    nx.draw_networkx_edges(graph, pos=spring_pos, width=edge_width, ax=graph_plot)
-
-
-def draw_node_and_neighbours(graph: nx.Graph, graph_plot: Axes,
+def draw_node_and_neighbours(graph: nx.Graph,
                              selected_node_name: str,
-                             num_nodes_to_render=DEFAULT_NODES_TO_RENDER) -> None:
+                             num_nodes=DEFAULT_NODES_TO_RENDER) -> None:
     """ Draw node selected_node_name and it's neighbours on graph_plot. Note that this doesn't
     mean the nodes are visible, as the graph_plot must be rendered outside this function.
 
+    Preconditions:
+        - num_nodes > 0
+
     """
+    node_size = round(max(MAX_NODE_SIZE / num_nodes, MIN_NODE_SIZE))
+    line_width = round(max(MAX_LINE_WIDTH / num_nodes, MIN_LINE_WIDTH))
     nodes = [selected_node_name]
     edges = []
-    neighbours_rendered = 0
+    nodes_rendered = 1
     print(
         f'{selected_node_name} has a partisanship score of {graph.nodes[selected_node_name]["bias"]}')
     for neighbour in graph.neighbors(selected_node_name):
-        if num_nodes_to_render <= neighbours_rendered:
+        if num_nodes <= nodes_rendered:
             print('breaking')
             break
         print(
             f'Neighbour:{neighbour} has a partisanship score of: {graph.nodes[neighbour]["bias"]}')
         nodes.append(neighbour)
         edges.append((selected_node_name, neighbour))
-        neighbours_rendered += 1
+        nodes_rendered += 1
 
-    node_colours = [get_colour(graph.nodes[node_name]['bias']) for node_name in nodes]
-    labels = {}
-    for node in nodes:
-        labels[node] = node
-    # https://networkx.org/documentation/latest/reference/generated/networkx.drawing.layout.spring_layout.html
-    spring_pos = nx.spring_layout(nodes)
-    nx.draw_networkx_nodes(graph, spring_pos, nodelist=nodes, node_color=node_colours,
-                           ax=graph_plot, vmin=PARTISANSHIP_RANGE[0],
-                           vmax=PARTISANSHIP_RANGE[1])
-    nx.draw_networkx_labels(graph, spring_pos, labels=labels, ax=graph_plot)
-    nx.draw_networkx_edges(graph, pos=spring_pos, edgelist=edges, ax=graph_plot)
+    visualize_graph(graph, nodes, edges, node_size=node_size, line_width=line_width)
 
 
-def draw_limited_num_of_nodes(graph: nx.Graph, graph_plot: Axes,
+def draw_limited_num_of_nodes(graph: nx.Graph,
                               num_nodes=DEFAULT_NODES_TO_RENDER) -> None:
     """ Draw num_nodes nodes, prioritizing connected nodes when
-    possible on graph_plot. Note that this doesn't mean the nodes are visible, as the graph_plot
-    must be rendered outside this function.
+    possible. Will open the graph in your default browser
 
+    Preconditions:
+        - num_nodes > 0
     """
+    node_size = round(max(MAX_NODE_SIZE / num_nodes, MIN_NODE_SIZE))
+    line_width = round(max(MAX_LINE_WIDTH / num_nodes, MIN_LINE_WIDTH))
 
     nodes = []
     edges = []
-    original_num_nodes = num_nodes  # TODO: delete this & other debugging stuff
     print('starting converting to set')
     unvisited_nodes = set(graph.nodes)
     print('finished converting to set')
@@ -131,22 +105,8 @@ def draw_limited_num_of_nodes(graph: nx.Graph, graph_plot: Axes,
         for node in nodes_clump:
             if node != start_node:
                 unvisited_nodes.remove(node)
-    if len(nodes) != original_num_nodes:
-        print('Wrong # of nodes')
 
-    node_colours = [get_colour(graph.nodes[node_name]['bias']) for node_name in nodes]
-
-    # Color map stuff: https://stackoverflow.com/questions/25748182/python-making-color-bar-that-runs-from-red-to-blue
-    labels = {}
-    for node in nodes:
-        labels[node] = node
-    # https://networkx.org/documentation/latest/reference/generated/networkx.drawing.layout.spring_layout.html
-    spring_pos = nx.spring_layout(nodes)
-    nx.draw_networkx_nodes(graph, spring_pos, nodelist=nodes, node_color=node_colours,
-                           ax=graph_plot, vmin=PARTISANSHIP_RANGE[0],
-                           vmax=PARTISANSHIP_RANGE[1])
-    nx.draw_networkx_labels(graph, spring_pos, labels=labels, ax=graph_plot)
-    nx.draw_networkx_edges(graph, pos=spring_pos, edgelist=edges, ax=graph_plot)
+    visualize_graph(graph, nodes, edges, node_size=node_size, line_width=line_width)
 
 
 def _get_nodes_and_edges(graph: nx.Graph, current_node_name: str, num_nodes: int,
@@ -214,24 +174,14 @@ def get_colour(partisanship_score: int) -> str:
         return 'red'
 
 
-def render_tkinter_gui(graph: nx.Graph, graph_figure: plt.Figure) -> None:
-    """ Renders the graph stored in the graph variable, along with UI elements.
+def render_tkinter_gui(graph: nx.Graph) -> None:
+    """ Renders a UI to interact with the graph. Note that all graphs launched will show in a
+    new tab in the user's default browser
 
     """
     window = tk.Tk()
 
-    frame_graph = tk.Frame(master=window, width=500)
-    frame_graph.pack(fill=tk.BOTH, side=tk.RIGHT, expand=True)
-    canvas = FigureCanvasTkAgg(graph_figure, master=frame_graph)
-    canvas.draw()
-
-    toolbar = NavigationToolbar2Tk(canvas, frame_graph, pack_toolbar=False)
-    toolbar.update()
-
-    toolbar.pack(side=tk.BOTTOM, fill=tk.X)
-    canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
-
-    frame_user_interaction = tk.Frame(master=window, width=200, height=100)
+    frame_user_interaction = tk.Frame(master=window)
     frame_user_interaction.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
 
     selected_node_name = tk.StringVar()
@@ -249,11 +199,15 @@ def render_tkinter_gui(graph: nx.Graph, graph_figure: plt.Figure) -> None:
 
     # change logic in on_combobox_selected so it only shows number of nodes neighbours max
     def on_random_nodes_btn_pressed() -> None:
-        graph_plot = graph_figure.get_axes()[0]
-        graph_plot.clear()
-        num_nodes = int(num_nodes_as_str.get())
-        draw_limited_num_of_nodes(graph, graph_plot, num_nodes)
-        canvas.draw()
+        if num_nodes_as_str.get() != '' and int(num_nodes_as_str.get()) > 0:
+            # Handling the case where there is nothing in the entry box for number of nodes
+            num_nodes = int(num_nodes_as_str.get())
+        else:
+            num_nodes = 1
+            num_nodes_as_str.set(1)
+
+        print(f'num nodes is {num_nodes}')
+        draw_limited_num_of_nodes(graph, num_nodes)
 
     def on_combobox_selected(event: tk.Event) -> None:
         print("combobox selected")
@@ -262,13 +216,15 @@ def render_tkinter_gui(graph: nx.Graph, graph_figure: plt.Figure) -> None:
         partisanship_label[
             'text'] = f'{selected_node_name.get()} is a {selected_node_partisanship} tweet'
 
-        graph_plot = graph_figure.get_axes()[0]
-        graph_plot.clear()
-        num_nodes = int(num_nodes_as_str.get())
+        if num_nodes_as_str.get() != '' and int(num_nodes_as_str.get()) > 0:
+            # Handling the case where there is nothing in the entry box for number of nodes
+            num_nodes = int(num_nodes_as_str.get())
+        else:
+            num_nodes_as_str.set(1)
+            num_nodes = 1
         print("calling draw_node_and_neighbours")
-        draw_node_and_neighbours(graph, graph_plot, selected_node_name.get(), num_nodes)
+        draw_node_and_neighbours(graph, selected_node_name.get(), num_nodes)
         print('done with draw_node_and_neighbours')
-        canvas.draw()
 
     # add button for show random nodes
     show_random_nodes_btn = tk.Button(master=frame_user_interaction, text="View random nodes",
@@ -289,9 +245,10 @@ def render_tkinter_gui(graph: nx.Graph, graph_figure: plt.Figure) -> None:
     window.mainloop()
 
 
-def visualize_whole_graph(graph_nx: nx.Graph,
-                          layout: str = 'spring_layout') -> None:
-    """Use plotly and networkx to visualize the given graph.
+def visualize_graph(graph_nx: nx.Graph, nodes_list: List[str],
+                    edges_list: List[Tuple[str, str]], node_size=MIN_NODE_SIZE,
+                    line_width=MIN_LINE_WIDTH) -> None:
+    """Use plotly and networkx to visualize all edges and nodes from nodes_list
 
     NOTE: This is a modified version of visualize_graph from a3_visualization.py
     Optional arguments:
@@ -301,25 +258,27 @@ def visualize_whole_graph(graph_nx: nx.Graph,
     LINE_COLOUR = 'rgb(210,210,210)'
     VERTEX_BORDER_COLOUR = 'rgb(50, 50, 50)'
 
-    pos = getattr(nx, layout)(graph_nx)
+    # make sure to plug the weights in
+    pos = nx.spring_layout(nodes_list)
 
-    x_values = [pos[k][0] for k in graph_nx.nodes]
-    y_values = [pos[k][1] for k in graph_nx.nodes]
-    labels = list(graph_nx.nodes)
+    x_values = [pos[k][0] for k in nodes_list]
+    y_values = [pos[k][1] for k in nodes_list]
 
-    node_colours = [get_colour(graph_nx.nodes[node_name]['bias']) for node_name in graph_nx.nodes]
+    sizes = [node_size] * len(nodes_list)
+    node_colours = [get_colour(graph_nx.nodes[node_name]['bias']) for node_name in nodes_list]
 
     x_edges = []
     y_edges = []
-    for edge in graph_nx.edges:
+    for edge in edges_list:
         x_edges += [pos[edge[0]][0], pos[edge[1]][0], None]
         y_edges += [pos[edge[0]][1], pos[edge[1]][1], None]
+    # coloring edges: https://github.com/plotly/plotly.py/issues/591#issuecomment-430187163
 
     trace3 = Scatter(x=x_edges,
                      y=y_edges,
                      mode='lines',
                      name='edges',
-                     line=dict(color=LINE_COLOUR, width=1),
+                     line=dict(color=LINE_COLOUR, width=line_width),
                      hoverinfo='none',
                      )
     trace4 = Scatter(x=x_values,
@@ -327,11 +286,11 @@ def visualize_whole_graph(graph_nx: nx.Graph,
                      mode='markers',
                      name='nodes',
                      marker=dict(symbol='circle-dot',
-                                 size=5,
+                                 size=sizes,
                                  color=node_colours,
                                  line=dict(color=VERTEX_BORDER_COLOUR, width=0.5)
                                  ),
-                     text=labels,
+                     text=nodes_list,
                      hovertemplate='%{text}',
                      hoverlabel={'namelength': 0}
                      )
@@ -353,12 +312,9 @@ if __name__ == '__main__':
     nx_graph = g.to_networkx()
     # nx_graph = generate_dummy_graph(50)
     print('converted to networkx')
-    figure = plt.Figure()
-    subplot = figure.add_subplot(111)
 
-    visualize_whole_graph(nx_graph)
-
-    # render_tkinter_gui(nx_graph, figure)
+    draw_limited_num_of_nodes(nx_graph)
+    render_tkinter_gui(nx_graph)
 
     import python_ta
 
