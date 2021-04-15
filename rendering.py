@@ -60,9 +60,11 @@ def draw_node_and_neighbours(graph: nx.Graph,
         - num_nodes > 0
 
     """
+
+    print(f'maximum number of nodes is {len(list(graph.nodes))}')
     node_size = round(max(MAX_NODE_SIZE / num_nodes, MIN_NODE_SIZE))
     line_width = round(max(MAX_LINE_WIDTH / num_nodes, MIN_LINE_WIDTH))
-    nodes = [selected_node_name]
+    nodes = [(selected_node_name, graph.nodes[selected_node_name])]
     edges = []
     nodes_rendered = 1
     print(
@@ -73,11 +75,22 @@ def draw_node_and_neighbours(graph: nx.Graph,
             break
         print(
             f'Neighbour:{neighbour} has a partisanship score of: {graph.nodes[neighbour]["bias"]}')
-        nodes.append(neighbour)
-        edges.append((selected_node_name, neighbour))
+        nodes.append((neighbour, graph.nodes[neighbour]))
+        edge_weight = graph[selected_node_name][neighbour]['weight']
+        edges.append((selected_node_name, neighbour, {'weight': edge_weight}))
         nodes_rendered += 1
 
-    visualize_graph(graph, nodes, edges, node_size=node_size, line_width=line_width)
+    new_graph = nx.Graph()
+    print('adding nodes')
+    new_graph.add_nodes_from(nodes)
+    print('adding edges')
+    new_graph.add_edges_from(edges)
+    print('visualizing graph')
+    import time
+    start = time.time()
+    visualize_graph(new_graph, node_size=node_size, line_width=line_width)
+    end = time.time()
+    print(f'Visualization time: {end - start} seconds')
 
 
 def draw_limited_num_of_nodes(graph: nx.Graph,
@@ -91,6 +104,9 @@ def draw_limited_num_of_nodes(graph: nx.Graph,
     node_size = round(max(MAX_NODE_SIZE / num_nodes, MIN_NODE_SIZE))
     line_width = round(max(MAX_LINE_WIDTH / num_nodes, MIN_LINE_WIDTH))
 
+    print(f'maximum number of nodes is {len(list(graph.nodes))}')
+    original_num_nodes = num_nodes
+
     nodes = []
     edges = []
     print('starting converting to set')
@@ -100,13 +116,19 @@ def draw_limited_num_of_nodes(graph: nx.Graph,
         start_node = unvisited_nodes.pop()
         nodes_clump, edges_clump = _get_nodes_and_edges(graph, start_node, num_nodes, set())
         num_nodes -= len(nodes_clump)
-        nodes.extend(nodes_clump)
-        edges.extend(edges_clump)
         for node in nodes_clump:
+            nodes.append((node, graph.nodes[node]))
             if node != start_node:
                 unvisited_nodes.remove(node)
+        for edge in edges_clump:
+            edge_weight = graph[edge[0]][edge[1]]['weight']
+            edges.append((edge[0], edge[1], {'weight': edge_weight}))
+    print(f'Nodes drawn: {len(nodes)}: Nodes requested: {original_num_nodes}')
+    new_graph = nx.Graph()
+    new_graph.add_nodes_from(nodes)
+    new_graph.add_edges_from(edges)
 
-    visualize_graph(graph, nodes, edges, node_size=node_size, line_width=line_width)
+    visualize_graph(new_graph, node_size=node_size, line_width=line_width)
 
 
 def _get_nodes_and_edges(graph: nx.Graph, current_node_name: str, num_nodes: int,
@@ -180,6 +202,7 @@ def render_tkinter_gui(graph: nx.Graph) -> None:
 
     """
     window = tk.Tk()
+    window.title("Hashtag Partisanship")
 
     frame_user_interaction = tk.Frame(master=window)
     frame_user_interaction.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
@@ -245,8 +268,7 @@ def render_tkinter_gui(graph: nx.Graph) -> None:
     window.mainloop()
 
 
-def visualize_graph(graph_nx: nx.Graph, nodes_list: List[str],
-                    edges_list: List[Tuple[str, str]], node_size=MIN_NODE_SIZE,
+def visualize_graph(graph_nx: nx.Graph, node_size=MIN_NODE_SIZE,
                     line_width=MIN_LINE_WIDTH) -> None:
     """Use plotly and networkx to visualize all edges and nodes from nodes_list
 
@@ -259,17 +281,21 @@ def visualize_graph(graph_nx: nx.Graph, nodes_list: List[str],
     VERTEX_BORDER_COLOUR = 'rgb(50, 50, 50)'
 
     # make sure to plug the weights in
-    pos = nx.spring_layout(nodes_list)
+    # applying spring_layout to nodes_list when nodes_list is the entire nodes_list is
+    # different from giving it the graph
+    # pos = nx.spring_layout(nodes_list, weight=None)
+    pos = nx.spring_layout(graph_nx)
 
-    x_values = [pos[k][0] for k in nodes_list]
-    y_values = [pos[k][1] for k in nodes_list]
+    x_values = [pos[k][0] for k in graph_nx.nodes]
+    y_values = [pos[k][1] for k in graph_nx.nodes]
 
-    sizes = [node_size] * len(nodes_list)
-    node_colours = [get_colour(graph_nx.nodes[node_name]['bias']) for node_name in nodes_list]
+    node_names = list(graph_nx.nodes)
+    sizes = [node_size] * len(node_names)
+    node_colours = [get_colour(graph_nx.nodes[node_name]['bias']) for node_name in graph_nx.nodes]
 
     x_edges = []
     y_edges = []
-    for edge in edges_list:
+    for edge in graph_nx.edges:
         x_edges += [pos[edge[0]][0], pos[edge[1]][0], None]
         y_edges += [pos[edge[0]][1], pos[edge[1]][1], None]
     # coloring edges: https://github.com/plotly/plotly.py/issues/591#issuecomment-430187163
@@ -290,7 +316,7 @@ def visualize_graph(graph_nx: nx.Graph, nodes_list: List[str],
                                  color=node_colours,
                                  line=dict(color=VERTEX_BORDER_COLOUR, width=0.5)
                                  ),
-                     text=nodes_list,
+                     text=list(graph_nx.nodes),
                      hovertemplate='%{text}',
                      hoverlabel={'namelength': 0}
                      )
@@ -309,11 +335,17 @@ if __name__ == '__main__':
 
     g = csv_to_graph.load_weighted_hashtags_graph('total_filtered_politician.csv')
     csv_to_graph.add_edges('total_filtered_politician.csv', g)
+    print(f'pre-removal nodes num: {len(list(g.get_vertices()))}')
+    g.remove_min_count(40)
+    print(f'post-removal nodes num: {len(list(g.get_vertices()))}')
+
     nx_graph = g.to_networkx()
+    print(f'post conversion node nums: {len(list(nx_graph.nodes))}')
+    print(f'Trump bias: {nx_graph.nodes["Trump"]["bias"]}')
     # nx_graph = generate_dummy_graph(50)
     print('converted to networkx')
 
-    draw_limited_num_of_nodes(nx_graph)
+    # visualize_graph(nx_graph, list(nx_graph.nodes), list(nx_graph.edges))
     render_tkinter_gui(nx_graph)
 
     import python_ta
