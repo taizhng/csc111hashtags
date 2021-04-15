@@ -120,6 +120,6 @@ if __name__ == '__main__':
     # OR You can uncomment line 36 and comment line 37.
     get_us_hashtags('small_tweet_ids.jsonl', 'full_member_info.csv', 'accounts-twitter-data.csv')
 
-    # (warning the following line may take a while to run,
+    # This is the dataset we used (warning the following line may take a while to run,
     # the full version has over 10 million tweets)
     # get_us_hashtags('all_tweet_ids.jsonl', 'full_member_info.csv', 'accounts-twitter-data.csv')
