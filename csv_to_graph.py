@@ -21,8 +21,9 @@ This file is Copyright (c) 2021 Jiajin Wu, Tai Zhang, and Kenneth Miura.
 import csv
 from dataclasses import WeightedGraph
 
-def load_weighted_hashtags_graph(hashtags_data_file: str) -> WeightedGraph:
-    """Return a book review WEIGHTED graph corresponding to the given datasets.
+
+def load_weighted_hashtags_graph(hashtags_data_file: str, min_count: int) -> WeightedGraph:
+    """Return a WEIGHTED graph corresponding to the given datasets.
 
     Preconditions:
         - reviews_file is the path to a CSV file corresponding to the book review data
@@ -40,6 +41,10 @@ def load_weighted_hashtags_graph(hashtags_data_file: str) -> WeightedGraph:
             lst = string_to_list(hashtags)
             for hashtag in lst:
                 hashtag_graph.add_vertex(hashtag, party)
+
+    add_edges(hashtags_data_file, hashtag_graph)
+
+    hashtag_graph.remove_min_count(min_count)
 
     return hashtag_graph
 
@@ -73,17 +78,16 @@ def add_edges(hashtags_data_file: str, hashtag_graph: WeightedGraph) -> None:
 
 
 if __name__ == '__main__':
-    graph = load_weighted_hashtags_graph('total_filtered_politician.csv')
+    graph = load_weighted_hashtags_graph('total_filtered_politician.csv', 40)
     graph_vertices = graph.get_vertices()
-    counter = 0
-    for vertex in graph_vertices:
-        num = str(graph_vertices[vertex].count)
-        bias = str(graph_vertices[vertex].partisanship)
-        if int(num) > 20:
-            counter += 1
-            print(vertex + " " + num + " Amount of bias " + bias)
-    print(counter)
-    add_edges('total_filtered_politician.csv', graph)
+    # counter = 0
+    # for vertex in graph_vertices:
+    #     num = str(graph_vertices[vertex].count)
+    #     bias = str(graph_vertices[vertex].partisanship)
+    #     if int(num) > 20:
+    #         counter += 1
+    #         print(vertex + " " + num + " Amount of bias " + bias)
+    # print(counter)
     networkx_graph = graph.to_networkx()
 
     # graph.remove_min_count(20)

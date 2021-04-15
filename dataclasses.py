@@ -107,7 +107,7 @@ class _WeightedHashtag:
         #     one_adj = len(self_neighbours.union(other_neighbours))
         #     return same_weight / one_adj
 
-    def update_weighting_absolute(self, party: int) -> None:
+    def update(self, party: int) -> None:
         """Updates the weighting a given hashtag vertex using the party affiliation and
         a basic absolute count of tweets appeared.
 
@@ -127,10 +127,18 @@ class _WeightedHashtag:
         # Otherwise, the party is Republican
         else:
             self.count_rep += 1
-        # Update the entire count, and recalculate the partisanship using the formula:
+        # Update the entire count
+        self.count += 1
+        self.partisanship = self.count_rep / self.count
+        self.update_weighting_absolute()
+
+    def update_weighting_absolute(self) -> None:
+        """Updates the weighting of a vertex
+        Recalculate the partisanship using the formula:
         # self.partisanship = (self.count_rep * REPUBLICAN + self.count_dem * DEMOCRATIC)/self.count
         # Since DEMOCRATIC == 0, we only count self.count_rep.
-        self.count += 1
+        """
+
         self.partisanship = self.count_rep / self.count
 
 
@@ -168,7 +176,8 @@ class WeightedGraph:
                 self._vertices[item] = _WeightedHashtag(item, 1, 0, 1)
         # If the node is already in the graph, update using the update_weighting_(CHOICE).
         else:
-            self._vertices[item].update_weighting_absolute(party)
+
+            self._vertices[item].update(party)
 
     def add_edge(self, item1: Any, item2: Any, weight: float = 1) -> None:
         """Add an edge between the two hashtags with the given items in this graph,
@@ -188,6 +197,7 @@ class WeightedGraph:
             v2.neighbours[v1] = weight
         else:
             # We didn't find an existing vertex for both items.
+            print(item1 + " " + item2)
             raise ValueError
 
     def adjacent(self, item1: Any, item2: Any) -> bool:
@@ -281,9 +291,12 @@ class WeightedGraph:
         new_graph = self._vertices.copy()
         for hashtag in self._vertices:
             if self._vertices[hashtag].count <= min_count:
+                # REMOVING NEIGHBOURS TOO.
+                for neighbour in new_graph[hashtag].neighbours:
+                    neighbour.neighbours.pop(new_graph[hashtag])
                 new_graph.pop(hashtag)
-
         self._vertices = new_graph
+
 
 if __name__ == '__main__':
     import python_ta
