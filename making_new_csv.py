@@ -18,7 +18,7 @@ import json
 import csv
 
 
-def get_us_hashtags(tweets_file: str, member_info_file: str) -> int:
+def get_us_hashtags(tweets_file: str, member_info_file: str, senate_file: str) -> dict[str, int]:
     """
     This function will create a csv file with only us politicians and their partisan
     scores(democrat: 0, republicans: 1).It returns a integer value of how many politicians that is
@@ -26,7 +26,9 @@ def get_us_hashtags(tweets_file: str, member_info_file: str) -> int:
     """
     # creates a integer to measure the tweets that don't fulfill the requirements.
     unread = 0
-    us_politicians = get_us_information(member_info_file)
+    # Try to find how many different us politicians send tweets
+    unique_politicians = set()
+    us_politicians = get_us_information(member_info_file, senate_file)
     # create up a csv file called total_filtered_politician.csv
     # (there is no need to create this file before hand)
     with open('total_filtered_politician.csv', mode='w', encoding='utf-8') as csv_file:
@@ -40,23 +42,26 @@ def get_us_hashtags(tweets_file: str, member_info_file: str) -> int:
             for line in json_file:
                 tweet = json.loads(line)
                 user = tweet['user']
+                user_id = user['id_str']
                 # this makes sure that there won't be any empty hashtags
                 if tweet['entities']['hashtags'] != []:
-                    if user['name'] in us_politicians:
+                    if user_id in us_politicians:
                         writer.writerow(
                             {'name': user['name'],
-                             'partisan_score': us_politicians[user['name']],
+                             'partisan_score': us_politicians[user['id_str']],
                              'hashtags': {x['text'] for x in tweet['entities']['hashtags']}})
+                        unique_politicians.add(user_id)
                     else:
                         unread += 1
-            return unread
+            return {'unread': unread, 'unique_politicians': len(unique_politicians)}
 
 
-def get_us_information(file: str) -> dict[str, int]:
+def get_us_information(all_nations_file: str, senate_file: str) -> dict[str, int]:
     """
     This function will get all us politician's information
     """
-    with open(file, encoding="UTF-8") as file_read:
+    senate_info = get_us_senator(senate_file)
+    with open(all_nations_file, encoding="UTF-8") as file_read:
         reader = csv.reader(file_read)
         next(reader)
         data = {}
@@ -64,16 +69,37 @@ def get_us_information(file: str) -> dict[str, int]:
             # filters us politicians and assign their party with score of 0 or 1 to them.
             if row[9] == 'United States':
                 if row[4] == 'Democrat':
-                    data[row[0]] = 0
+                    data[row[3]] = 0
                 elif row[4] == 'Republican':
-                    data[row[0]] = 1
+                    data[row[3]] = 1
+        # combines both senate and house of representatives
+        data.update(senate_info)
+    return data
+
+
+def get_us_senator(file: str) -> dict[str, int]:
+    """
+    This function will get the us senator's twitter ids and their partisan score
+    This is done, because full_member_ids contains only house of representatives
+    """
+    with open(file, encoding="UTF-8") as file_read:
+        reader = csv.reader(file_read)
+        next(reader)
+        data = {}
+        # Only contains information for the senate
+        for row in reader:
+            if row[14] == 'Congress':
+                if row[15] == 'Democrat':
+                    data[row[1]] = 0
+                elif row[15] == 'Republican':
+                    data[row[1]] = 1
     return data
 
 
 if __name__ == '__main__':
     # this out put a csv file from the two given file
     # (warning the following line may take a while to run, the full file has over 10 million tweets)
-    get_us_hashtags('all_tweet_ids.jsonl', 'full_member_info.csv')
+    # get_us_hashtags('all_tweet_ids.jsonl', 'full_member_info.csv', 'accounts-twitter-data.csv')
 
     import python_ta.contracts
     python_ta.contracts.check_all_contracts()
@@ -83,6 +109,6 @@ if __name__ == '__main__':
         'max-line-length': 100,
         'disable': ['E1136'],
         'extra-imports': ['csv', 'json'],
-        'allowed-io': ['get_us_information', 'get_us_hashtags'],
+        'allowed-io': ['get_us_information', 'get_us_hashtags', 'get_us_senator'],
         'max-nested-blocks': 4
     })
