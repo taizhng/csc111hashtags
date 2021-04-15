@@ -1,47 +1,75 @@
-"""Main dataclasses used for the project."""
+"""
+CSC111 2021 Project 1, dataclasses for the WeightedGraph
+
+This is a file to filter out all the American politician hashtags into a csv file
+from hydrated tweet files
+
+This file holds our _WeightedHashtag and WeightedGraph classes.
+
+Copyright and Usage Information
+===============================
+This file is provided solely for the personal and private use of the professors and TAs
+in CSC111 at the University of Toronto St. George campus. All forms of
+distribution of this code, whether as given or with any changes, are
+expressly prohibited. For more information on copyright for this CSC111 project,
+please consult with us.
+
+This file is Copyright (c) 2021 Jiajin Wu, Tai Zhang, and Kenneth Miura.
+"""
 from __future__ import annotations
 from typing import Any, Union
 
 import networkx as nx
 
+# These global variables represent the absolute weighting of bias, where 0 corresponds
+# with a Democratic oriented tweet/hashtag and 1 for Republican.
 DEMOCRATIC = 0
 REPUBLICAN = 1
 
-class _WeightedVertex:
-    """A vertex in our weighted partisan graph, structured similarly to A3's book reviews.
+
+class _WeightedHashtag:
+    """A weighted vertex for our partisan graph. Includes various information about the
+    hashtag's use, with the neighbours dependent on the style of weighting chosen.
 
     Instance Attributes:
-        - item: The data stored in this vertex, representing a twitter user or a hashtag.
-        - kind: The type of this vertex: 'user' or 'hashtag'.
+        - item: The name of the hashtag stored as a str
         - neighbours: The vertices that are adjacent to this vertex, and their corresponding
-            edge weights.
-        - count_dem: the amount of times a hashtag has appeared in a Democratic party's tweet.
-        - count_rep: the amount of times a hashtag has appeared in a Republican party's tweet.
-        - partisanship: a weighting between 0 and 1 showing the bias of a tweet.
+            edge weights. See: neighbours_indirect function.
+        - count: The absolute number of times the hashtag has appeared in a tweet.
+        - count_dem: the amount of times a hashtag has appeared in a Democratic member's tweet.
+        - count_rep: the amount of times a hashtag has appeared in a Republican member's tweet.
+        - partisanship: a weighting between 0 and 1 showing the bias of a tweet. See weigh_bias
 
     Representation Invariants:
         - self not in self.neighbours
         - all(self in u.neighbours for u in self.neighbours)
-        - count != 0
+        - count_dem >= 0
+        - count_rep >= 0
+        - 0 <= partisanship <= 1
 
     """
     item: Any
-    neighbours: dict[_WeightedVertex, Union[int, float]]
+    neighbours: dict[_WeightedHashtag, Union[int, float]]
+    count: int
     count_dem: int
     count_rep: int
     partisanship: float
 
-    def __init__(self, item: Any, count: int, count_dem: int, count_rep: int) -> None:
-        """Initialize a new vertex with the given item.
+    def __init__(self, item: Any, total_count: int, count_dem: int, count_rep: int) -> None:
+        """Initialize the hashtag using the item given, and setting its count, count_dem and
+        count rep values.
 
-        This vertex is initialized with no neighbours.
+        The vertex is initialized with no neighbours.
 
         Preconditions:
+            - count >= 0
+            - count_dem >= 0
+            - count_rep >= 0
 
         """
         self.item = item
         self.neighbours = {}
-        self.count = count
+        self.count = total_count
         self.count_dem = count_dem
         self.count_rep = count_rep
         self.partisanship = count_rep
@@ -50,7 +78,7 @@ class _WeightedVertex:
         """Return the degree of this vertex."""
         return len(self.neighbours)
 
-    def similarity_score_INSERT_NAME(self, other: _WeightedVertex) -> float:
+    def similarity_score_temp_1(self, other: _WeightedHashtag) -> float:
         """Return the similarity score between two hashtags.
 
         This similarity score is calculated by:
@@ -64,7 +92,7 @@ class _WeightedVertex:
         #     return len(self_neighbours.intersection(other_neighbours)) \
         #            / len(self_neighbours.union(other_neighbours))
 
-    def similarity_score_INSERT_NAME_2(self, other: _WeightedVertex) -> float:
+    def similarity_score_temp_2(self, other: _WeightedHashtag) -> float:
         """Return the similarity score between two hashtags.
 
         As explained in the title, this similarity score is calculated by:
@@ -81,55 +109,69 @@ class _WeightedVertex:
         #     return same_weight / one_adj
 
     def update_weighting_absolute(self, party: int) -> None:
-        """Updates the weighting a given hashtag vertex using the party affiliation using
+        """Updates the weighting a given hashtag vertex using the party affiliation and
         a basic absolute count of tweets appeared.
 
         Preconditions:
-        party == 0 or 1
+            - party == 0 or 1
+        >>> g = WeightedGraph()
+        >>> g.add_vertex("MAGA", 1)
+        >>> g.get_weight_hashtag("MAGA") == 1.0
+        True
+        >>> g.add_vertex("MAGA", 0)
+        >>> g.get_weight_hashtag("MAGA") == 0.5
+        True
         """
+        # If party value is Democratic, add one to count_dem.
         if party == DEMOCRATIC:
             self.count_dem += 1
-        # Otherwise, the party is republican
+        # Otherwise, the party is Republican
         else:
             self.count_rep += 1
+        # Update the entire count, and recalculate the partisanship using the formula:
+        # self.partisanship = (self.count_rep * REPUBLICAN + self.count_dem * DEMOCRATIC)/self.count
+        # Since DEMOCRATIC == 0, we only count self.count_rep.
         self.count += 1
         self.partisanship = self.count_rep / self.count
 
 
 class WeightedGraph:
-    """A weighted graph used to represent a hashtag network that keeps track of weightings.
-
+    """A weighted graph used to represent the connections between hashtags.
+    Includes functions to update the graph, as well as retrieve information.
     """
     # Private Instance Attributes:
     #     - _vertices:
-    #         A collection of the vertices contained in this graph.
-    #         Maps item to _WeightedVertex object.
-    _vertices: dict[Any, _WeightedVertex]
+    #         A collection of _WeightedHashtag contained in the graph.
+    #         Maps item to _WeightedHashtag object.
+    _vertices: dict[Any, _WeightedHashtag]
 
     def __init__(self) -> None:
-        """Initialize an empty graph (no vertices or edges)."""
+        """Initialize an empty graph (no hashtag vertices or edges)."""
         self._vertices = {}
 
     def add_vertex(self, item: Any, party: int) -> None:
-        """Add a vertex with the given item to this graph.
+        """Add a vertex with the given item to this graph with the corresponding party affiliation.
 
         The new vertex is not adjacent to any other vertices.
-        Do nothing if the given item is already in this graph.
+        If the item is already in the graph, call the update_weighting_(CHOICE) function.
 
         Preconditions:
-            -
+            - party == 0 or 1
         """
 
         if item not in self._vertices:
+            # Create a new hashtag with an initial weighting of 0 for a democratic biased node.
             if party == DEMOCRATIC:
-                self._vertices[item] = _WeightedVertex(item, 1, 1, 0)
+                self._vertices[item] = _WeightedHashtag(item, 1, 1, 0)
+            # Create a new hashtag with an initial weighting of 1 for a Republican biased node.
             else:
-                self._vertices[item] = _WeightedVertex(item, 1, 0, 1)
+                self._vertices[item] = _WeightedHashtag(item, 1, 0, 1)
+        # If the node is already in the graph, update using the update_weighting_(CHOICE).
         else:
             self._vertices[item].update_weighting_absolute(party)
 
     def add_edge(self, item1: Any, item2: Any, weight: Union[int, float] = 1) -> None:
-        """Add an edge between the two vertices with the given items in this graph,
+        """Add an edge between the two hashtags with the given items in this graph,
         with the given weight.
 
         Raise a ValueError if item1 or item2 do not appear as vertices in this graph.
@@ -146,12 +188,10 @@ class WeightedGraph:
             v2.neighbours[v1] = weight
         else:
             # We didn't find an existing vertex for both items.
-            print(item1 + " " + item2 + "BRUH")
             raise ValueError
 
     def adjacent(self, item1: Any, item2: Any) -> bool:
         """Return whether item1 and item2 are adjacent vertices in this graph.
-
         Return False if item1 or item2 do not appear as vertices in this graph.
         """
         if item1 in self._vertices and item2 in self._vertices:
@@ -163,8 +203,6 @@ class WeightedGraph:
     def get_neighbours(self, item: Any) -> set:
         """Return a set of the neighbours of the given item.
 
-        Note that the *items* are returned, not the _Vertex objects themselves.
-
         Raise a ValueError if item does not appear as a vertex in this graph.
         """
         if item in self._vertices:
@@ -173,35 +211,47 @@ class WeightedGraph:
         else:
             raise ValueError
 
-    def get_weight(self, item1: Any, item2: Any) -> Union[int, float]:
+    def get_weight_edge(self, item1: Any, item2: Any) -> Union[int, float]:
         """Return the weight of the edge between the given items.
 
-        Return 0 if item1 and item2 are not adjacent.
+        Return -1 if item1 and item2 are not adjacent.
 
         Preconditions:
             - item1 and item2 are vertices in this graph
         """
         v1 = self._vertices[item1]
         v2 = self._vertices[item2]
-        return v1.neighbours.get(v2, 0)
+        return v1.neighbours.get(v2, -1)
+
+    def get_weight_hashtag(self, item: Any) -> float:
+        """Returns the weight of the partisanship of the hashtag.
+
+        Returns -1.0 if item is not in the graph.
+
+        Preconditions:
+            - item in self._vertices"""
+        return self._vertices[item].partisanship
 
     def average_weight(self, item: Any) -> float:
-        """Return the average weight of the edges adjacent to the vertex corresponding to item.
+        """Return the average partisanship of edges adjacent to the vertex corresponding to item.
 
         Raise ValueError if item does not corresponding to a vertex in the graph.
         """
         if item in self._vertices:
             v = self._vertices[item]
-            return sum(v.neighbours.values()) / len(v.neighbours)
+            return sum(neighbour.partisanship for neighbour in v.neighbours) / len(v.neighbours)
         else:
             raise ValueError
 
     def get_vertices(self) -> dict:
-        """Returns the _vertices"""
+        """Returns the _vertices of the graph."""
         return self._vertices
 
     def to_networkx(self, max_vertices: int = 5000) -> nx.Graph:
-        """Graph to convert to networkx"""
+        """Converts the weighted graph to the networkx graph, to be called after the
+        computations have been completed. Creates a networkx graph including the partisanship
+        bias, the weighting of the hashtag node (absolute number of times it has appeared),
+        as well as all the weighted edges connecting the hashtag nodes."""
         graph_nx = nx.Graph()
         for v in self._vertices.values():
             graph_nx.add_node(v.item, bias=v.partisanship)
@@ -216,3 +266,14 @@ class WeightedGraph:
             if graph_nx.number_of_nodes() >= max_vertices:
                 break
         return graph_nx
+
+
+if __name__ == '__main__':
+    import python_ta
+    python_ta.check_all(config={
+        'max-line-length': 1000,
+        'disable': ['E1136'],
+        'extra-imports': ['csv', 'networkx'],
+        'allowed-io': [],
+        'max-nested-blocks': 4
+    })
