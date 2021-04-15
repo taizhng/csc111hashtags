@@ -1,7 +1,7 @@
 """Transforms our csv data into the graph."""
 import csv
 
-from dataclasses import WeightedGraph
+from graph_dataclasses import WeightedGraph
 
 
 def string_to_list(set_str: str) -> list:
@@ -85,5 +85,4 @@ if __name__ == '__main__':
         if int(num) > 400:
             print(vertex + " " + num + " Amount of bias " + bias)
     add_edges('total_filtered_politician.csv', graph)
-    from visualization import visualize_graph
-    visualize_graph(graph)
+    networkx_graph = graph.to_networkx()
