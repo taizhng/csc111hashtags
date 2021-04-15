@@ -24,7 +24,8 @@ def get_us_hashtags(tweets_file: str, member_info_file: str, senate_file: str) -
     scores(democrat: 0, republicans: 1).It returns a integer value of how many politicians that is
     in the original tweet file that are not us politicians or their tweets don't have hashtags.
     """
-    # creates a integer to measure the tweets that don't fulfill the requirements.
+    # creates a integer to measure the tweets that iis not us politician tweets,
+    # but still with hashtags in their tweets.
     unread = 0
     # Try to find how many different us politicians send tweets
     unique_politicians = set()
@@ -97,10 +98,6 @@ def get_us_senator(file: str) -> dict[str, int]:
 
 
 if __name__ == '__main__':
-    # this out put a csv file from the two given file
-    # (warning the following line may take a while to run, the full file has over 10 million tweets)
-    # get_us_hashtags('all_tweet_ids.jsonl', 'full_member_info.csv', 'accounts-twitter-data.csv')
-
     import python_ta.contracts
     python_ta.contracts.check_all_contracts()
 
@@ -112,3 +109,7 @@ if __name__ == '__main__':
         'allowed-io': ['get_us_information', 'get_us_hashtags', 'get_us_senator'],
         'max-nested-blocks': 4
     })
+
+    # this out put a csv file from the two given file
+    # (warning the following line may take a while to run, the full file has over 10 million tweets)
+    get_us_hashtags('all_tweet_ids.jsonl', 'full_member_info.csv', 'accounts-twitter-data.csv')
