@@ -268,7 +268,7 @@ class WeightedGraph:
 
             for u in v.neighbours:
                 if graph_nx.number_of_nodes() < max_vertices:
-                    graph_nx.add_node(u.item, bias=v.partisanship, count=v.count)
+                    graph_nx.add_node(u.item, bias=u.partisanship, count=u.count)
 
                 if u.item in graph_nx.nodes:
                     graph_nx.add_edge(v.item, u.item, weight=u.neighbours[v])
