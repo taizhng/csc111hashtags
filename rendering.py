@@ -22,10 +22,11 @@ from plotly.graph_objs import Scatter, Figure
 
 PARTISANSHIP_RANGE = [0, 1]
 DEFAULT_NODES_TO_RENDER = 20
-MIN_NODE_SIZE = 5
-MIN_LINE_WIDTH = 3
-MAX_NODE_SIZE = 300
+MIN_LINE_WIDTH = 3.0
+NODE_SIZE_MULTIPLIER = 10
 MAX_LINE_WIDTH = 20
+MAX_NODE_SIZE = 100
+MIN_NODE_SIZE = 20
 
 
 def generate_dummy_graph(num_nodes: int) -> nx.Graph:
@@ -61,9 +62,12 @@ def draw_node_and_neighbours(graph: nx.Graph,
 
     """
 
+    total_nodes = len(list(graph.nodes))
+    if num_nodes > total_nodes:
+        num_nodes = total_nodes
     print(f'maximum number of nodes is {len(list(graph.nodes))}')
-    node_size = round(max(MAX_NODE_SIZE / num_nodes, MIN_NODE_SIZE))
-    line_width = round(max(MAX_LINE_WIDTH / num_nodes, MIN_LINE_WIDTH))
+    node_size = max(MAX_NODE_SIZE / num_nodes, MIN_NODE_SIZE)
+    line_width = max(MAX_LINE_WIDTH / num_nodes, MIN_LINE_WIDTH)
     nodes = [(selected_node_name, graph.nodes[selected_node_name])]
     edges = []
     nodes_rendered = 1
@@ -88,7 +92,7 @@ def draw_node_and_neighbours(graph: nx.Graph,
     print('visualizing graph')
     import time
     start = time.time()
-    visualize_graph(new_graph, node_size=node_size, line_width=line_width)
+    visualize_graph(new_graph, min_node_size=node_size, line_width=line_width)
     end = time.time()
     print(f'Visualization time: {end - start} seconds')
 
@@ -101,7 +105,10 @@ def draw_limited_num_of_nodes(graph: nx.Graph,
     Preconditions:
         - num_nodes > 0
     """
-    node_size = round(max(MAX_NODE_SIZE / num_nodes, MIN_NODE_SIZE))
+    total_nodes = len(list(graph.nodes))
+    if num_nodes > total_nodes:
+        num_nodes = total_nodes
+    node_size = max(MAX_NODE_SIZE / num_nodes, MIN_NODE_SIZE)
     line_width = round(max(MAX_LINE_WIDTH / num_nodes, MIN_LINE_WIDTH))
 
     print(f'maximum number of nodes is {len(list(graph.nodes))}')
@@ -128,7 +135,7 @@ def draw_limited_num_of_nodes(graph: nx.Graph,
     new_graph.add_nodes_from(nodes)
     new_graph.add_edges_from(edges)
 
-    visualize_graph(new_graph, node_size=node_size, line_width=line_width)
+    visualize_graph(new_graph, min_node_size=node_size, line_width=line_width)
 
 
 def _get_nodes_and_edges(graph: nx.Graph, current_node_name: str, num_nodes: int,
@@ -268,7 +275,7 @@ def render_tkinter_gui(graph: nx.Graph) -> None:
     window.mainloop()
 
 
-def visualize_graph(graph_nx: nx.Graph, node_size=MIN_NODE_SIZE,
+def visualize_graph(graph_nx: nx.Graph, min_node_size=5.0,
                     line_width=MIN_LINE_WIDTH) -> None:
     """Use plotly and networkx to visualize all edges and nodes from nodes_list
 
@@ -290,7 +297,9 @@ def visualize_graph(graph_nx: nx.Graph, node_size=MIN_NODE_SIZE,
     y_values = [pos[k][1] for k in graph_nx.nodes]
 
     node_names = list(graph_nx.nodes)
-    sizes = [node_size] * len(node_names)
+
+    sizes = [min_node_size + graph_nx.nodes[node_name]['bias'] * NODE_SIZE_MULTIPLIER for node_name
+             in node_names]
     node_colours = [get_colour(graph_nx.nodes[node_name]['bias']) for node_name in graph_nx.nodes]
 
     x_edges = []
