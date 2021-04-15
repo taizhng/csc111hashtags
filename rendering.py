@@ -9,7 +9,7 @@ Copyright and Usage Information
 This file is provided solely for the final assignment of CSC110 at the University of Toronto
 St. George campus. All forms of distribution of this code, whether as given or with any changes,
 are expressly prohibited.
-This file is Copyright (c) 2021 Kenneth Miura
+This file is Copyright (c) 2021 Jiajin Wu, Tai Zhang, and Kenneth Miura.
 """
 import random
 from typing import List, Tuple
@@ -309,6 +309,11 @@ def visualize_graph(graph_nx: nx.Graph, min_node_size=5.0,
         y_edges += [pos[edge[0]][1], pos[edge[1]][1], None]
     # coloring edges: https://github.com/plotly/plotly.py/issues/591#issuecomment-430187163
 
+    labels = []
+    for node_name in graph_nx.nodes:
+        partisanship = partisanship_score_to_str(graph_nx.nodes[node_name]['bias'])
+        count = graph_nx.nodes[node_name]['count']
+        labels.append(f'#{node_name} occurs {count} times and is a {partisanship} hashtag')
     trace3 = Scatter(x=x_edges,
                      y=y_edges,
                      mode='lines',
@@ -325,7 +330,7 @@ def visualize_graph(graph_nx: nx.Graph, min_node_size=5.0,
                                  color=node_colours,
                                  line=dict(color=VERTEX_BORDER_COLOUR, width=0.5)
                                  ),
-                     text=list(graph_nx.nodes),
+                     text=labels,
                      hovertemplate='%{text}',
                      hoverlabel={'namelength': 0}
                      )
@@ -342,11 +347,8 @@ if __name__ == '__main__':
     # https://stackoverflow.com/questions/20133479/how-to-draw-directed-graphs-using-networkx-in-python
     import csv_to_graph
 
-    g = csv_to_graph.load_weighted_hashtags_graph('total_filtered_politician.csv')
-    csv_to_graph.add_edges('total_filtered_politician.csv', g)
-    print(f'pre-removal nodes num: {len(list(g.get_vertices()))}')
-    g.remove_min_count(40)
-    print(f'post-removal nodes num: {len(list(g.get_vertices()))}')
+    g = csv_to_graph.load_weighted_hashtags_graph('total_filtered_politician.csv', 200)
+    print(f' nodes num: {len(list(g.get_vertices()))}')
 
     nx_graph = g.to_networkx()
     print(f'post conversion node nums: {len(list(nx_graph.nodes))}')
