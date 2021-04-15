@@ -74,11 +74,11 @@ def add_edges(hashtags_data_file: str, hashtag_graph: WeightedGraph) -> None:
             if len(lst) > 1:
                 for i in range(0, len(lst) - 1):
                     for j in range(i + 1, len(lst)):
-                        hashtag_graph.add_edge(lst[i], lst[j], 1)
+                        hashtag_graph.add_edge(lst[i], lst[j])
 
 
 if __name__ == '__main__':
-    graph = load_weighted_hashtags_graph('total_filtered_politician.csv', 40)
+    graph = load_weighted_hashtags_graph('total_filtered_politician.csv', 200)
     graph_vertices = graph.get_vertices()
     # counter = 0
     # for vertex in graph_vertices:

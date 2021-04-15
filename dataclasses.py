@@ -48,7 +48,7 @@ class _WeightedHashtag:
 
     """
     item: Any
-    neighbours: dict[_WeightedHashtag, Union[int, float]]
+    neighbours: dict[_WeightedHashtag, (float, float)]
     count: int
     count_dem: int
     count_rep: int
@@ -179,7 +179,7 @@ class WeightedGraph:
 
             self._vertices[item].update(party)
 
-    def add_edge(self, item1: Any, item2: Any, weight: float = 1) -> None:
+    def add_edge(self, item1: Any, item2: Any) -> None:
         """Add an edge between the two hashtags with the given items in this graph,
         with the given weight. Modified from CSC111-A3
 
@@ -193,8 +193,16 @@ class WeightedGraph:
             v2 = self._vertices[item2]
 
             # Add the new edge
-            v1.neighbours[v2] = weight
-            v2.neighbours[v1] = weight
+            new_denom = (v1.count + v2.count) / 2
+            if v2 in v1.neighbours:
+                og_count = v1.neighbours[v2][0]
+
+                v1.neighbours[v2] = (og_count + 1, og_count / new_denom)
+                v2.neighbours[v1] = (og_count + 1, og_count / new_denom)
+            else:
+
+                v1.neighbours[v2] = (1, 1/new_denom)
+                v2.neighbours[v1] = (1, 1/new_denom)
         else:
             # We didn't find an existing vertex for both items.
             print(item1 + " " + item2)
@@ -221,7 +229,7 @@ class WeightedGraph:
         else:
             raise ValueError
 
-    def get_weight_edge(self, item1: Any, item2: Any) -> Union[int, float]:
+    def get_weight_edge(self, item1: Any, item2: Any) -> float:
         """Return the weight of the edge between the given items.
 
         Return -1 if item1 and item2 are not adjacent.
@@ -231,7 +239,7 @@ class WeightedGraph:
         """
         v1 = self._vertices[item1]
         v2 = self._vertices[item2]
-        return v1.neighbours.get(v2, -1)
+        return v1.neighbours.get(v2, -1)[1]
 
     def get_weight_hashtag(self, item: Any) -> float:
         """Returns the weight of the partisanship of the hashtag.
@@ -271,7 +279,7 @@ class WeightedGraph:
                     graph_nx.add_node(u.item, bias=u.partisanship, count=u.count)
 
                 if u.item in graph_nx.nodes:
-                    graph_nx.add_edge(v.item, u.item, weight=u.neighbours[v])
+                    graph_nx.add_edge(v.item, u.item, weight=u.neighbours[v][1])
 
             if graph_nx.number_of_nodes() >= max_vertices:
                 break
@@ -297,6 +305,13 @@ class WeightedGraph:
                 new_graph.pop(hashtag)
         self._vertices = new_graph
 
+    def print_closest(self) -> None:
+        for v1 in self._vertices:
+            for v2 in self._vertices:
+                if v1 != v2:
+                    if self.adjacent(v1, v2):
+                        if self.get_weight_edge(v1, v2) > 0.2:
+                            print(v1 + " " + v2 + " " + str(self.get_weight_edge(v1, v2)))
 
 if __name__ == '__main__':
     import python_ta
