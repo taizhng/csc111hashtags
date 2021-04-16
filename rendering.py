@@ -356,7 +356,7 @@ if __name__ == '__main__':
     # nx_graph = generate_dummy_graph(50)
     print('converted to networkx')
 
-    # visualize_graph(nx_graph, list(nx_graph.nodes), list(nx_graph.edges))
+    # visualize_graph(nx_graph)
     render_tkinter_gui(nx_graph)
 
     import python_ta

@@ -18,5 +18,5 @@ if __name__ == '__main__':
     graph = csv_to_graph.load_weighted_hashtags_graph('total_filtered_politician.csv', 200)
 
     nx_graph = graph.to_networkx()
-    rendering.visualize_graph(nx_graph, list(nx_graph.nodes), list(nx_graph.edges))
+    rendering.visualize_graph(nx_graph)
     rendering.render_tkinter_gui(nx_graph)
