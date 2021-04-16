@@ -6,6 +6,5 @@ pytest
 python-ta~=1.6.3
 
 # Graphics and data visualization
-tkinter
 networkx
 plotly
