@@ -111,13 +111,6 @@ class _WeightedHashtag:
 
         self.partisanship = self.count_rep / self.count
 
-    def update_weighting_most(self) -> None:
-        """Updates the weighting of a vertex.
-        Recalculates the partisanship using the formula:
-        # self.partisanship =
-        """
-        self.partisanship = self.count_rep / self.count
-
 
 class WeightedGraph:
     """A weighted graph used to represent the connections between hashtags.
@@ -180,7 +173,7 @@ class WeightedGraph:
     def update_edge_weight_absolute(self, item1: Any, item2: Any) -> None:
         """Updates the edge weight based on the occurences of both hashtags.
         If #DACA occurs 10 times, #DREAMers occurs 8 times, and they occur together 6 times, the
-        edge weighting would be 6/18.
+        edge weighting would be 6/9.
         """
         v1 = self._vertices[item1]
         v2 = self._vertices[item2]
@@ -198,7 +191,7 @@ class WeightedGraph:
 
     def update_edge_weight_highest(self, item1: Any, item2: Any) -> None:
         """Updates the edge weight based on the occurences of the least common hashtag.
-        E.G. If #Trump has 100 occurences and #ImpeachTrump has 30 occurences, with 25 occured
+        E.G. If #Trump has 100 occurences and #ImpeachTrump has 30 occurences, with 25 occurred
         with #Trump, the edge weighting would be 25/30.
         """
         v1 = self._vertices[item1]
@@ -274,7 +267,8 @@ class WeightedGraph:
         return graph_nx
 
     def remove_min_count(self, min_count: int) -> None:
-        """Removes nodes without any neighbours, as well as nodes with only one neighbour."""
+        """Removes nodes that have a count less than min_count.
+        """
         new_graph = self._vertices.copy()
         for hashtag in self._vertices:
             if self._vertices[hashtag].count <= min_count:
