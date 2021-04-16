@@ -19,21 +19,20 @@ please consult with us.
 This file is Copyright (c) 2021 Jiajin Wu, Tai Zhang, and Kenneth Miura.
 """
 import csv
+
 from dataclasses import WeightedGraph
 
 
-def load_weighted_hashtags_graph(hashtags_data_file: str, min_count: int) -> WeightedGraph:
+def load_weighted_hashtags_graph(tweets_csv: str, min_count: int, edge_format: str) -> WeightedGraph:
     """Return a WEIGHTED graph corresponding to the given datasets.
 
     Preconditions:
-        - reviews_file is the path to a CSV file corresponding to the book review data
-          format described on the assignment handout
-        - book_names_file is the path to a CSV file corresponding to the book data
-          format described on the assignment handout
+        - min_count >= 0
+        - edge_format == 'abs' or 'max'
     """
     hashtag_graph = WeightedGraph()
 
-    with open(hashtags_data_file, encoding="utf-8") as csv_file:
+    with open(tweets_csv, encoding="utf-8") as csv_file:
         next(csv_file)
         for row in csv.reader(csv_file):
             hashtags = row[2]
@@ -42,7 +41,7 @@ def load_weighted_hashtags_graph(hashtags_data_file: str, min_count: int) -> Wei
             for hashtag in lst:
                 hashtag_graph.add_vertex(hashtag, party)
 
-    add_edges(hashtags_data_file, hashtag_graph)
+    add_edges(tweets_csv, hashtag_graph, edge_format)
 
     hashtag_graph.remove_min_count(min_count)
 
@@ -54,51 +53,40 @@ def string_to_list(set_str: str) -> list:
     strings where each string corresponds to a hashtag.
 
     >>> hashtags = string_to_list("{'FutureIsProgressive', 'ABetterDeal'}")
-    >>> hashtags == {"FutureIsProgressive", "ABetterDeal"}
+    >>> hashtags == ["futureisprogressive", "abetterdeal"]
     True
     """
+    set_str = set_str.lower()
     stripped = set_str[2:-2]
     clean_str = stripped.replace('\'', '').replace(' ', '')
     hashtags = clean_str.split(',')
     return hashtags
 
 
-def add_edges(hashtags_data_file: str, hashtag_graph: WeightedGraph) -> None:
-    """Adds edges to the graph based on strict connections in the same tweet."""
-    with open(hashtags_data_file, encoding="utf-8") as csv_file:
+def add_edges(tweets_csv: str, hashtag_graph: WeightedGraph, edge_format: str) -> None:
+    """Adds edges to the graph based on strict connections in the same tweet.
+
+        Preconditions:
+            - edge_format == 'abs' or 'max'
+    """
+    with open(tweets_csv, encoding="utf-8") as csv_file:
         next(csv_file)
         for row in csv.reader(csv_file):
             hashtags = row[2]
-            # party = int(row[1])
             lst = string_to_list(hashtags)
             if len(lst) > 1:
                 for i in range(0, len(lst) - 1):
                     for j in range(i + 1, len(lst)):
-                        hashtag_graph.add_edge(lst[i], lst[j])
+                        hashtag_graph.add_edge(lst[i], lst[j], edge_format)
 
 
 if __name__ == '__main__':
-    graph = load_weighted_hashtags_graph('total_filtered_politician.csv', 200)
-    graph_vertices = graph.get_vertices()
-    # counter = 0
-    # for vertex in graph_vertices:
-    #     num = str(graph_vertices[vertex].count)
-    #     bias = str(graph_vertices[vertex].partisanship)
-    #     if int(num) > 20:
-    #         counter += 1
-    #         print(vertex + " " + num + " Amount of bias " + bias)
-    # print(counter)
-    networkx_graph = graph.to_networkx()
-
-    # graph.remove_min_count(20)
-    # from visualization import visualize_graph
-    # visualize_graph(graph)
 
     import python_ta
-    # python_ta.check_all(config={
-    #     'max-line-length': 1000,
-    #     'disable': ['E1136'],
-    #     'extra-imports': ['csv', 'networkx'],
-    #     'allowed-io': ['load_weighted_hashtags_graph', 'add_edges'],
-    #     'max-nested-blocks': 4
-    # })
+    python_ta.check_all(config={
+        'max-line-length': 1000,
+        'disable': ['E1136'],
+        'extra-imports': ['csv', 'networkx'],
+        'allowed-io': ['load_weighted_hashtags_graph', 'add_edges'],
+        'max-nested-blocks': 4
+    })

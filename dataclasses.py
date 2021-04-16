@@ -17,7 +17,7 @@ please consult with us.
 This file is Copyright (c) 2021 Jiajin Wu, Tai Zhang, and Kenneth Miura.
 """
 from __future__ import annotations
-from typing import Any, Union
+from typing import Any
 import networkx as nx
 
 # These global variables represent the absolute weighting of bias, where 0 corresponds
@@ -77,36 +77,6 @@ class _WeightedHashtag:
         """Return the degree of this hashtag."""
         return len(self.neighbours)
 
-    def similarity_score_temp_1(self, other: _WeightedHashtag) -> float:
-        """Return the similarity score between two hashtags.
-
-        This similarity score is calculated by:
-
-        """
-        # self_neighbours = set(self.neighbours.keys())
-        # other_neighbours = set(other.neighbours.keys())
-        # if self_neighbours == set() or other_neighbours == set():
-        #     return 0.0
-        # else:
-        #     return len(self_neighbours.intersection(other_neighbours)) \
-        #            / len(self_neighbours.union(other_neighbours))
-
-    def similarity_score_temp_2(self, other: _WeightedHashtag) -> float:
-        """Return the similarity score between two hashtags.
-
-        As explained in the title, this similarity score is calculated by:
-        """
-        # self_neighbours = set(self.neighbours.keys())
-        # other_neighbours = set(other.neighbours.keys())
-        # if self_neighbours == set() or other_neighbours == set():
-        #     return 0.0
-        # else:
-        #     both_adj = self_neighbours.intersection(other_neighbours)
-        #     same_weight = len({rev for rev in both_adj if
-        #                        self.neighbours[rev] == other.neighbours[rev]})
-        #     one_adj = len(self_neighbours.union(other_neighbours))
-        #     return same_weight / one_adj
-
     def update(self, party: int) -> None:
         """Updates the weighting a given hashtag vertex using the party affiliation and
         a basic absolute count of tweets appeared.
@@ -139,6 +109,13 @@ class _WeightedHashtag:
         # Since DEMOCRATIC == 0, we only count self.count_rep.
         """
 
+        self.partisanship = self.count_rep / self.count
+
+    def update_weighting_most(self) -> None:
+        """Updates the weighting of a vertex.
+        Recalculates the partisanship using the formula:
+        # self.partisanship =
+        """
         self.partisanship = self.count_rep / self.count
 
 
@@ -179,7 +156,7 @@ class WeightedGraph:
 
             self._vertices[item].update(party)
 
-    def add_edge(self, item1: Any, item2: Any) -> None:
+    def add_edge(self, item1: Any, item2: Any, weight_format: str) -> None:
         """Add an edge between the two hashtags with the given items in this graph,
         with the given weight. Modified from CSC111-A3
 
@@ -187,26 +164,59 @@ class WeightedGraph:
 
         Preconditions:
             - item1 != item2
+            - weight_format == 'absolute' or 'highest'
         """
         if item1 in self._vertices and item2 in self._vertices:
-            v1 = self._vertices[item1]
-            v2 = self._vertices[item2]
 
             # Add the new edge
-            new_denom = (v1.count + v2.count) / 2
-            if v2 in v1.neighbours:
-                og_count = v1.neighbours[v2][0]
-
-                v1.neighbours[v2] = (og_count + 1, og_count / new_denom)
-                v2.neighbours[v1] = (og_count + 1, og_count / new_denom)
+            if weight_format == 'abs':
+                self.update_edge_weight_absolute(item1, item2)
             else:
-
-                v1.neighbours[v2] = (1, 1/new_denom)
-                v2.neighbours[v1] = (1, 1/new_denom)
+                self.update_edge_weight_highest(item1, item2)
         else:
             # We didn't find an existing vertex for both items.
-            print(item1 + " " + item2)
             raise ValueError
+
+    def update_edge_weight_absolute(self, item1: Any, item2: Any) -> None:
+        """Updates the edge weight based on the occurences of both hashtags.
+        If #DACA occurs 10 times, #DREAMers occurs 8 times, and they occur together 6 times, the
+        edge weighting would be 6/18.
+        """
+        v1 = self._vertices[item1]
+        v2 = self._vertices[item2]
+
+        new_denom = (v1.count + v2.count) / 2
+        if v2 in v1.neighbours:
+            og_count = v1.neighbours[v2][0]
+
+            v1.neighbours[v2] = (og_count + 1, og_count / new_denom)
+            v2.neighbours[v1] = (og_count + 1, og_count / new_denom)
+        else:
+
+            v1.neighbours[v2] = (1, 1 / new_denom)
+            v2.neighbours[v1] = (1, 1 / new_denom)
+
+    def update_edge_weight_highest(self, item1: Any, item2: Any) -> None:
+        """Updates the edge weight based on the occurences of the least common hashtag.
+        E.G. If #Trump has 100 occurences and #ImpeachTrump has 30 occurences, with 25 occured
+        with #Trump, the edge weighting would be 25/30.
+        """
+        v1 = self._vertices[item1]
+        v2 = self._vertices[item2]
+
+        if v1.count > v2.count:
+            new_denom = v2.count
+        else:
+            new_denom = v1.count
+
+        if v2 in v1.neighbours:
+            og_count = v1.neighbours[v2][0]
+
+            v1.neighbours[v2] = (og_count + 1, og_count / new_denom)
+            v2.neighbours[v1] = (og_count + 1, og_count / new_denom)
+        else:
+            v1.neighbours[v2] = (1, 1 / new_denom)
+            v2.neighbours[v1] = (1, 1 / new_denom)
 
     def adjacent(self, item1: Any, item2: Any) -> bool:
         """Return whether item1 and item2 are adjacent vertices in this graph.
@@ -217,17 +227,6 @@ class WeightedGraph:
             return any(v2.item == item2 for v2 in v1.neighbours)
         else:
             return False
-
-    def get_neighbours(self, item: Any) -> set:
-        """Return a set of the neighbours of the given item.
-
-        Raise a ValueError if item does not appear as a vertex in this graph.
-        """
-        if item in self._vertices:
-            v = self._vertices[item]
-            return {neighbour.item for neighbour in v.neighbours}
-        else:
-            raise ValueError
 
     def get_weight_edge(self, item1: Any, item2: Any) -> float:
         """Return the weight of the edge between the given items.
@@ -249,17 +248,6 @@ class WeightedGraph:
         Preconditions:
             - item in self._vertices"""
         return self._vertices[item].partisanship
-
-    def average_weight(self, item: Any) -> float:
-        """Return the average partisanship of edges adjacent to the vertex corresponding to item.
-
-        Raise ValueError if item does not corresponding to a vertex in the graph.
-        """
-        if item in self._vertices:
-            v = self._vertices[item]
-            return sum(neighbour.partisanship for neighbour in v.neighbours) / len(v.neighbours)
-        else:
-            raise ValueError
 
     def get_vertices(self) -> dict:
         """Returns the _vertices of the graph."""
@@ -285,15 +273,6 @@ class WeightedGraph:
                 break
         return graph_nx
 
-    def remove_single_neighbour(self) -> None:
-        """Removes nodes without any neighbours, as well as nodes with only one neighbour."""
-        new_graph = self._vertices.copy()
-        for hashtag in self._vertices:
-            if len(self._vertices[hashtag].neighbours) <= 1:
-                new_graph.pop(hashtag)
-
-        self._vertices = new_graph
-
     def remove_min_count(self, min_count: int) -> None:
         """Removes nodes without any neighbours, as well as nodes with only one neighbour."""
         new_graph = self._vertices.copy()
@@ -301,24 +280,7 @@ class WeightedGraph:
             if self._vertices[hashtag].count <= min_count:
                 # REMOVING NEIGHBOURS TOO.
                 for neighbour in new_graph[hashtag].neighbours:
-                    neighbour.neighbours.pop(new_graph[hashtag])
+                    if hashtag != neighbour.item:
+                        neighbour.neighbours.pop(new_graph[hashtag])
                 new_graph.pop(hashtag)
         self._vertices = new_graph
-
-    def print_closest(self) -> None:
-        for v1 in self._vertices:
-            for v2 in self._vertices:
-                if v1 != v2:
-                    if self.adjacent(v1, v2):
-                        if self.get_weight_edge(v1, v2) > 0.2:
-                            print(v1 + " " + v2 + " " + str(self.get_weight_edge(v1, v2)))
-
-if __name__ == '__main__':
-    import python_ta
-    python_ta.check_all(config={
-        'max-line-length': 1000,
-        'disable': ['E1136'],
-        'extra-imports': ['csv', 'networkx'],
-        'allowed-io': [],
-        'max-nested-blocks': 4
-    })
