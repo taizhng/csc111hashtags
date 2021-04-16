@@ -202,7 +202,7 @@ def render_tkinter_gui(graph: nx.Graph) -> None:
         selected_node_partisanship = partisanship_score_to_str(
             graph.nodes[selected_node_name.get()]['bias'])
         partisanship_label[
-            'text'] = f'{selected_node_name.get()} is a {selected_node_partisanship} tweet'
+            'text'] = f'{selected_node_name.get()} is a {selected_node_partisanship} hashtag'
 
         if num_nodes_as_str.get() != '' and int(num_nodes_as_str.get()) > 0:
             # Handling the case where there is nothing in the entry box for number of nodes
