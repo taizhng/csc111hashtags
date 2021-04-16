@@ -183,10 +183,12 @@ def render_tkinter_gui(graph: nx.Graph) -> None:
     partisanship_label = ttk.Label(master=frame_user_interaction)
 
     # add label for Number of nodes to show
-    num_nodes_label = ttk.Label(master=frame_user_interaction, text='Number of nodes to display:')
+    num_nodes_label = ttk.Label(master=frame_user_interaction,
+                                text='Number of vertices to display:')
     # add entry for number of nodes to show
     num_nodes_entry = tk.Entry(master=frame_user_interaction, textvariable=num_nodes_as_str)
-    node_selector_label = ttk.Label(master=frame_user_interaction, text='Show neighbours for: ')
+    node_selector_label = ttk.Label(master=frame_user_interaction,
+                                    text='Show neighbours for the hashtag: ')
 
     def on_random_nodes_btn_pressed() -> None:
         if num_nodes_as_str.get() != '' and int(num_nodes_as_str.get()) > 0:
@@ -213,7 +215,7 @@ def render_tkinter_gui(graph: nx.Graph) -> None:
         draw_node_and_neighbours(graph, selected_node_name.get(), num_nodes)
 
     # add button for show random nodes
-    show_random_nodes_btn = tk.Button(master=frame_user_interaction, text="View random nodes",
+    show_random_nodes_btn = tk.Button(master=frame_user_interaction, text="View random vertices",
                                       command=on_random_nodes_btn_pressed)
 
     node_selector['values'] = list(graph.nodes)
@@ -268,28 +270,28 @@ def visualize_graph(graph_nx: nx.Graph, title: str, min_node_size=5.0,
         partisanship = partisanship_score_to_str(graph_nx.nodes[node_name]['bias'])
         count = graph_nx.nodes[node_name]['count']
         labels.append(f'#{node_name} occurs {count} times and is a {partisanship} hashtag')
-    trace3 = Scatter(x=x_edges,
-                     y=y_edges,
-                     mode='lines',
-                     name='edges',
-                     line=dict(color=LINE_COLOUR, width=line_width),
-                     hoverinfo='none',
-                     )
-    trace4 = Scatter(x=x_values,
-                     y=y_values,
-                     mode='markers',
-                     name='nodes',
-                     marker=dict(symbol='circle-dot',
-                                 size=sizes,
-                                 color=node_colours,
-                                 line=dict(color=VERTEX_BORDER_COLOUR, width=0.5)
-                                 ),
-                     text=labels,
-                     hovertemplate='%{text}',
-                     hoverlabel={'namelength': 0}
-                     )
+    edges_scatter = Scatter(x=x_edges,
+                            y=y_edges,
+                            mode='lines',
+                            name='edges',
+                            line=dict(color=LINE_COLOUR, width=line_width),
+                            hoverinfo='none',
+                            )
+    edges_traces = Scatter(x=x_values,
+                           y=y_values,
+                           mode='markers',
+                           name='nodes',
+                           marker=dict(symbol='circle-dot',
+                                       size=sizes,
+                                       color=node_colours,
+                                       line=dict(color=VERTEX_BORDER_COLOUR, width=0.5)
+                                       ),
+                           text=labels,
+                           hovertemplate='%{text}',
+                           hoverlabel={'namelength': 0}
+                           )
 
-    data = [trace3, trace4]
+    data = [edges_scatter, edges_traces]
     fig = Figure(data=data, layout=Layout(
         title=go.layout.Title(text=title)
     ))
