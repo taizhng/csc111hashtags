@@ -11,7 +11,6 @@ St. George campus. All forms of distribution of this code, whether as given or w
 are expressly prohibited.
 This file is Copyright (c) 2021 Jiajin Wu, Tai Zhang, and Kenneth Miura.
 """
-import random
 from typing import List, Tuple
 import tkinter as tk
 from tkinter import ttk
@@ -39,6 +38,8 @@ def draw_node_and_neighbours(graph: nx.Graph,
     Preconditions:
         - num_nodes > 0
 
+    Optional arguments:
+        - num_nodes: The maximum number of nodes that can appear in the graph
     """
 
     total_nodes = len(list(graph.nodes))
@@ -66,11 +67,13 @@ def draw_node_and_neighbours(graph: nx.Graph,
 
 def draw_limited_num_of_nodes(graph: nx.Graph,
                               num_nodes=DEFAULT_NODES_TO_RENDER) -> None:
-    """ Draw num_nodes nodes, prioritizing connected nodes when
+    """ Draw num_nodes nodes from the Object "graph", prioritizing connected nodes when
     possible. Will open the graph in your default browser
 
     Preconditions:
         - num_nodes > 0
+    Optional arguments:
+        - num_nodes: The maximum number of nodes that can appear in the graph
     """
     total_nodes = len(list(graph.nodes))
     if num_nodes > total_nodes:
@@ -105,9 +108,13 @@ def draw_limited_num_of_nodes(graph: nx.Graph,
 def _get_nodes_and_edges(graph: nx.Graph, current_node_name: str, num_nodes: int,
                          visited: set[str]) -> \
         Tuple[List[str], List[Tuple[str, str]]]:
-    """ returns tuple of list of num_nodes nodes, and a list of the edges between them.
+    """ returns tuple of list of num_nodes nodes from the graph, and a list of the edges between them.
     Note: The first element of the tuple contains the nodes, and the second element of the tuple
     is the list of edges
+
+    The visited parameter represents nodes that were already visited by this recursive algorithm
+
+
     """
     if num_nodes == 0:
         return ([], [])
@@ -239,8 +246,7 @@ def visualize_graph(graph_nx: nx.Graph, title: str, min_node_size=5.0,
     graph will have the variable title as it's title
 
     NOTE: This is a modified version of visualize_graph from a3_visualization.py
-    Optional arguments:
-        - layout: which graph layout algorithm to use
+
     """
 
     LINE_COLOUR = 'rgb(210,210,210)'
@@ -306,9 +312,7 @@ if __name__ == '__main__':
 
     python_ta.check_all(config={
         'max-line-length': 100,
-        'extra-imports': ['python_ta.contracts', 'networkx', 'matplotlib', 'matplotlib.axes',
-                          'matplotlib.pyplot', 'matplotlib.colors',
-                          'matplotlib.backends.backend_tkagg', 'tkinter', 'random'],
+        'extra-imports': ['python_ta.contracts', 'networkx', 'plotly.graph_obs', 'tkinter'],
         'disable': ['R1705', 'C0200'],
     })
 
