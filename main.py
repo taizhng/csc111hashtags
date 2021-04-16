@@ -44,8 +44,8 @@ if __name__ == '__main__':
     # creates a weighted python graph
     g = csv_to_graph.load_weighted_hashtags_graph('total_filtered_politician.csv', 200, 'abs')
 
-    # If you want to use the other weighting for the edges, comment out the top, and uncomment
-    # the bottom graph.
+    # If you want to use the other weighting for the edges, comment out the line above, and uncomment
+    # the line below.
 
     # g = csv_to_graph.load_weighted_hashtags_graph('total_filtered_politician.csv', 200, 'max')
 
