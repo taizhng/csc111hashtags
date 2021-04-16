@@ -1,0 +1,16 @@
+# CSC111 2021: Python libraries that are needed in the Project.
+
+# Testing and code checking
+hypothesis
+pytest
+python-ta
+doctest
+
+# Reading files
+csv
+json
+
+# Graphics and data visualization
+tkinter
+networkx
+plotly
