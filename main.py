@@ -15,14 +15,13 @@ please consult with us.
 This file is Copyright (c) 2021 Jiajin Wu, Tai Zhang, and Kenneth Miura.
 """
 # This file converted the hydrated tweet files to a csv file
-import rendering
 from making_new_csv import get_us_hashtags
 
 # This file convert the processed csv data to python graph datatype
 import csv_to_graph
 
 # This file does the visual
-from rendering import render_tkinter_gui
+from rendering import render_tkinter_gui, visualize_graph
 
 if __name__ == '__main__':
     # How we processed the data (Here are few different file size for you to try)
@@ -46,7 +45,7 @@ if __name__ == '__main__':
     g = csv_to_graph.load_weighted_hashtags_graph('total_filtered_politician.csv', 200)
 
     nx_graph = g.to_networkx()
-    rendering.visualize_graph(nx_graph, "All Hashtags and Their Connections")
+    visualize_graph(nx_graph, "All Hashtags and Their Connections")
 
     # final graphics output
     render_tkinter_gui(nx_graph)
