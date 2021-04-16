@@ -15,6 +15,7 @@ please consult with us.
 This file is Copyright (c) 2021 Jiajin Wu, Tai Zhang, and Kenneth Miura.
 """
 # This file converted the hydrated tweet files to a csv file
+import rendering
 from making_new_csv import get_us_hashtags
 
 # This file convert the processed csv data to python graph datatype
@@ -43,12 +44,9 @@ if __name__ == '__main__':
 
     # creates a weighted python graph
     g = csv_to_graph.load_weighted_hashtags_graph('total_filtered_politician.csv', 200)
-    print(f' nodes num: {len(list(g.get_vertices()))}')
 
     nx_graph = g.to_networkx()
-    print(f'post conversion node nums: {len(list(nx_graph.nodes))}')
-    print(f'Trump bias: {nx_graph.nodes["Trump"]["bias"]}')
-    print('converted to networkx')
+    rendering.visualize_graph(nx_graph, "All Hashtags and Their Connections")
 
     # final graphics output
     render_tkinter_gui(nx_graph)
