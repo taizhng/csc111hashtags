@@ -18,23 +18,23 @@ import json
 import csv
 
 
-def get_us_hashtags(tweets_file: str, member_info_file: str, senate_file: str) -> dict[str, int]:
+def get_us_hashtags(tweets_file: str, member_info_file: str, senate_file: str,
+                    csv_file_name: str) -> \
+        dict[str, int]:
     """
     This function will create a csv file with only us politicians and their partisan
     scores(democrat: 0, republicans: 1).It returns a integer value of how many politicians that is
     in the original tweet file that are not us politicians or their tweets don't have hashtags.
     """
-    # creates a integer to measure the tweets that iis not us politician tweets,
+    # creates a integer to measure the tweets that is not us politician tweets,
     # but still with hashtags in their tweets.
     unread = 0
     # Try to find how many different us politicians send tweets
     unique_politicians = set()
     us_politicians = get_us_information(member_info_file, senate_file)
-    # create up a csv file called total_filtered_politician.csv
+    # create up a csv file called with the name in csv_file
     # (there is no need to create this file before hand)
-    # uncomment the following line for testing if you want.
-    # with open('test_filtered_politician.csv', mode='w', encoding='utf-8') as csv_file:
-    with open('total_filtered_politician.csv', mode='w', encoding='utf-8') as csv_file:
+    with open(csv_file_name, mode='w', encoding='utf-8') as csv_file:
         # the header for the csv files
         fieldnames = ['name', 'partisan_score', 'hashtags']
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames, lineterminator='\n')
@@ -111,15 +111,3 @@ if __name__ == '__main__':
         'allowed-io': ['get_us_information', 'get_us_hashtags', 'get_us_senator'],
         'max-nested-blocks': 4
     })
-
-    # this output a csv file from the three given file
-
-    # testing version (It takes 2-3 minutes for me, I used an old laptop which makes it slow)
-    # Just so you know, please run this after testing our full program, as it will overwrite the
-    # total_filtered_politician.csv that we gave in the zip file.
-    # OR You can uncomment line 36 and comment line 37.
-    get_us_hashtags('small_tweet_ids.jsonl', 'full_member_info.csv', 'accounts-twitter-data.csv')
-
-    # This is the dataset we used (warning the following line may take a while to run,
-    # the full version has over 10 million tweets)
-    # get_us_hashtags('all_tweet_ids.jsonl', 'full_member_info.csv', 'accounts-twitter-data.csv')
