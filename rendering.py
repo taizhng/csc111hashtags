@@ -134,16 +134,16 @@ def partisanship_score_to_str(partisanship_score: int) -> str:
 
     '''
     if PARTISANSHIP_RANGE[0] <= partisanship_score < 0.2:
-        return "Far-Left"
+        return "Extremely Democratic"
     elif 0.2 <= partisanship_score < 0.4:
-        return "Center-Left"
+        return "Moderately Democratic"
     elif 0.4 <= partisanship_score < 0.6:
         return "Moderate"
     elif 0.6 <= partisanship_score < 0.8:
-        return "Center-Right"
+        return "Moderately Republican"
     else:
         # partisanship score is in [0.8, 1]
-        return "Far-Right"
+        return "Extremely Republican"
 
 
 def get_colour(partisanship_score: int) -> str:
