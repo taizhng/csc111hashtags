@@ -42,7 +42,12 @@ if __name__ == '__main__':
     # 'total_filtered_politician.csv')
 
     # creates a weighted python graph
-    g = csv_to_graph.load_weighted_hashtags_graph('total_filtered_politician.csv', 200)
+    g = csv_to_graph.load_weighted_hashtags_graph('total_filtered_politician.csv', 200, 'abs')
+
+    # If you want to use the other weighting for the edges, comment out the top, and uncomment
+    # the bottom graph.
+
+    # g = csv_to_graph.load_weighted_hashtags_graph('total_filtered_politician.csv', 200, 'max')
 
     nx_graph = g.to_networkx()
     visualize_graph(nx_graph, "All Hashtags and Their Connections")
